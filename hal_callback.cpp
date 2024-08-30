@@ -17,6 +17,7 @@
 
 /* hal includes */
 #include "hal_general.h"
+#include "hal_wrapper.h"
 /* driver includes */
 
 /* rtos abstraction includes */
@@ -33,15 +34,21 @@
 void hal_callback_spi_rx_tx_complete(spi::module_t *arg_module)
 {
 
-    if (HAL_GPIO_ReadPin(arg_module->chip_select_port, arg_module->chip_select_pin) == GPIO_PIN_RESET)
-        HAL_GPIO_WritePin(arg_module->chip_select_port, arg_module->chip_select_pin, GPIO_PIN_SET);
+    if (hal::gpio_read_pin(arg_module->chip_select_port, arg_module->chip_select_pin) == GPIO_PIN_RESET)
+    {
+        hal::gpio_write_pin(arg_module->chip_select_port, arg_module->chip_select_pin, GPIO_PIN_SET);
+    }
+
     arg_module->rx_data_ready_flag = 1U;
 
 }
 
 void hal_callback_spi_error(spi::module_t *arg_module)
 {
-    if (HAL_GPIO_ReadPin(arg_module->chip_select_port, arg_module->chip_select_pin) == GPIO_PIN_RESET)
-        HAL_GPIO_WritePin(arg_module->chip_select_port, arg_module->chip_select_pin, GPIO_PIN_SET);
+    if (hal::gpio_read_pin(arg_module->chip_select_port, arg_module->chip_select_pin) == GPIO_PIN_RESET)
+    {
+        hal::gpio_write_pin(arg_module->chip_select_port, arg_module->chip_select_pin, GPIO_PIN_SET);
+    }
+
     arg_module->rx_data_ready_flag = 1U;
 }
