@@ -20,7 +20,7 @@
 /* layer_0 includes */
 #include "hal.h"
 #include "hal_wrapper.h"
-#include "hal_callback.h"
+//#include "hal_callback.h"
 #include "hal_spi_definitions.h"
 /* layer_1_rtosal includes */
 #include "rtosal.h"
@@ -118,19 +118,19 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
     if (module->settings.ti_mode != SPI_CONFIG_TI_MODE_DISABLE)                             { status = PROCEDURE_STATUS_ERROR; }
     if (module->settings.crc_calculation != SPI_CONFIG_CRC_CALCULATION_DISABLE)             { status = PROCEDURE_STATUS_ERROR; }
 
-    if (module->status == MODULE_STATUS_RESET)
-    {
-        module->lock = MODULE_UNLOCKED;
-        module->callbacks[TX_COMPLETE_CALLBACK_ID]          = nullptr;
-        module->callbacks[TX_COMPLETE_CALLBACK_ID]          = nullptr;
-        module->callbacks[RX_COMPLETE_CALLBACK_ID]          = nullptr;
-        module->callbacks[TX_RX_COMPLETE_CALLBACK_ID]       = nullptr;
-        module->callbacks[TX_HALF_COMPLETE_CALLBACK_ID]     = nullptr;
-        module->callbacks[RX_HALF_COMPLETE_CALLBACK_ID]     = nullptr;
-        module->callbacks[TX_RX_HALF_COMPLETE_CALLBACK_ID]  = nullptr;
-        module->callbacks[ERROR_CALLBACK_ID]                = nullptr;
-        module->callbacks[ABORT_CALLBACK_ID]                = nullptr;
-    }
+//    if (module->status == MODULE_STATUS_RESET)
+//    {
+//        module->lock = MODULE_UNLOCKED;
+//        module->callbacks[TX_COMPLETE_CALLBACK_ID]          = nullptr;
+//        module->callbacks[TX_COMPLETE_CALLBACK_ID]          = nullptr;
+//        module->callbacks[RX_COMPLETE_CALLBACK_ID]          = nullptr;
+//        module->callbacks[TX_RX_COMPLETE_CALLBACK_ID]       = nullptr;
+//        module->callbacks[TX_HALF_COMPLETE_CALLBACK_ID]     = nullptr;
+//        module->callbacks[RX_HALF_COMPLETE_CALLBACK_ID]     = nullptr;
+//        module->callbacks[TX_RX_HALF_COMPLETE_CALLBACK_ID]  = nullptr;
+//        module->callbacks[ERROR_CALLBACK_ID]                = nullptr;
+//        module->callbacks[ABORT_CALLBACK_ID]                = nullptr;
+//    }
 
     module->status = MODULE_STATUS_BUSY;
     disable_module();
@@ -217,95 +217,12 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
         }
     }
 
-//    set_tx_and_rx_interrupt_service_routines();
     std::shared_ptr<uint8_t[]> rx_pointer_tmp(new uint8_t[TX_SIZE_MAX]);
     rx_pointer = rx_pointer_tmp.get();
 
     module->error_code   = SPI_ERROR_NONE;
     module->status        = MODULE_STATUS_READY;
     return PROCEDURE_STATUS_OK;
-}
-
-spi::procedure_status_t spi::register_callback(callback_id_t arg_callback_id, spi_callback_ptr_t arg_callback_ptr) const
-{
-    procedure_status_t status = PROCEDURE_STATUS_OK;
-
-    if (arg_callback_ptr == nullptr)
-    {
-        module->error_code |= ERROR_CALLBACK_ID;
-
-        return PROCEDURE_STATUS_ERROR;
-    }
-
-    if (lock_module() == PROCEDURE_STATUS_OK)
-    {
-        if (module->status == MODULE_STATUS_READY)
-        {
-            if (arg_callback_id >= SPI_REGISTER_CALLBACK_MIN_ID && arg_callback_id <= SPI_REGISTER_CALLBACK_MAX_ID)
-            {
-                module->callbacks[arg_callback_id] = arg_callback_ptr;
-            }
-            else
-            {
-                set_error_bit(SPI_ERROR_CALLBACK_INVALID);
-                status =  PROCEDURE_STATUS_ERROR;
-            }
-        }
-        else
-        {
-            set_error_bit(SPI_ERROR_CALLBACK_INVALID);
-            status =  PROCEDURE_STATUS_ERROR;
-        }
-
-        if (unlock_module() != PROCEDURE_STATUS_OK)
-        {
-            status = PROCEDURE_STATUS_ERROR;
-        }
-    }
-    else
-    {
-        status = PROCEDURE_STATUS_ERROR;
-    }
-
-    return status;
-}
-
-spi::procedure_status_t spi::unregister_callback(callback_id_t arg_callback_id) const
-{
-    procedure_status_t status = PROCEDURE_STATUS_OK;
-
-
-    if (lock_module() == PROCEDURE_STATUS_OK)
-    {
-        if (module->status == MODULE_STATUS_READY)
-        {
-            if (arg_callback_id >= SPI_REGISTER_CALLBACK_MIN_ID && arg_callback_id <= SPI_REGISTER_CALLBACK_MAX_ID)
-            {
-                module->callbacks[arg_callback_id] = nullptr;
-            }
-            else
-            {
-                set_error_bit(SPI_ERROR_CALLBACK_INVALID);
-                status =  PROCEDURE_STATUS_ERROR;
-            }
-        }
-        else
-        {
-            set_error_bit(SPI_ERROR_CALLBACK_INVALID);
-            status =  PROCEDURE_STATUS_ERROR;
-        }
-
-        if (unlock_module() != PROCEDURE_STATUS_OK)
-        {
-            status = PROCEDURE_STATUS_ERROR;
-        }
-    }
-    else
-    {
-        status = PROCEDURE_STATUS_ERROR;
-    }
-
-    return status;
 }
 
 spi::procedure_status_t spi::create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue)
@@ -379,8 +296,8 @@ spi::procedure_status_t spi::create_channel(int16_t& arg_channel_id, hal::gpio_t
             {
                 break;
             }
-                hal::gpio_write_pin(new_channel.chip_select.port, new_channel.chip_select.pin, CHIP_SELECT_RESET);
         }
+        hal::gpio_write_pin(new_channel.chip_select.port, new_channel.chip_select.pin, CHIP_SELECT_RESET);
     }
     else
     {
@@ -701,49 +618,48 @@ void rx_isr(spi arg_object, struct spi::_handle_t *arg_module)
 
 void spi_irq_handler(spi* arg_object)
 {
-    if ((arg_object->get_status_register_bit(SPI_SR_BIT_OVERRUN) != BIT_SET)
-        && (arg_object->get_status_register_bit(SPI_SR_BIT_RX_BUFFER_NOT_EMPTY) == BIT_SET)
-        && (arg_object->check_interrupt_source(SPI_CR2_BIT_RX_BUFFER_NOT_EMPTY_INTERRUPT_ENABLE) == BIT_SET))
+    if (arg_object->check_interrupt_source(SPI_CR2_BIT_RX_BUFFER_NOT_EMPTY_INTERRUPT_ENABLE) == BIT_SET)
     {
-        rx_isr(*arg_object, arg_object->module);
-        return;
+        if (arg_object->get_status_register_bit(SPI_SR_BIT_RX_BUFFER_NOT_EMPTY) == BIT_SET)
+        {
+            if (arg_object->get_status_register_bit(SPI_SR_BIT_OVERRUN) != BIT_SET)
+            {
+                rx_isr(*arg_object, arg_object->module);
+                return;
+            }
+        }
     }
-    if ((arg_object->get_status_register_bit(SPI_SR_BIT_TX_BUFFER_EMPTY) == BIT_SET)
-        && (arg_object->check_interrupt_source(SPI_CR2_BIT_TX_BUFFER_EMPTY_INTERRUPT_ENABLE) == BIT_SET))
+
+    if (arg_object->check_interrupt_source(SPI_CR2_BIT_TX_BUFFER_EMPTY_INTERRUPT_ENABLE) == BIT_SET)
     {
-        tx_isr(*arg_object, arg_object->module);
-        return;
+        if (arg_object->get_status_register_bit(SPI_SR_BIT_TX_BUFFER_EMPTY) == BIT_SET)
+        {
+            tx_isr(*arg_object, arg_object->module);
+            return;
+        }
     }
-    if (((arg_object->get_status_register_bit(SPI_SR_BIT_MODE_FAULT) == BIT_SET)
-         || (arg_object->get_status_register_bit(SPI_SR_BIT_OVERRUN) == BIT_SET))
-        && (arg_object->check_interrupt_source(SPI_CR2_BIT_ERROR_INTERRUPT_ENABLE) == BIT_SET))
+
+    if (arg_object->check_interrupt_source(SPI_CR2_BIT_ERROR_INTERRUPT_ENABLE) == BIT_SET)
     {
         if (arg_object->get_status_register_bit(SPI_SR_BIT_OVERRUN) == BIT_SET)
         {
             if (arg_object->module->status != spi::MODULE_STATUS_BUSY_TX)
             {
                 arg_object->set_error_bit(SPI_ERROR_OVERRUN);
-                arg_object->clear_overrun_flag();
             }
-            else
-            {
-                arg_object->clear_overrun_flag();
-                return;
-            }
+            arg_object->clear_overrun_flag();
+            arg_object->disable_interrupts(SPI_CR2_BIT_RX_BUFFER_NOT_EMPTY_INTERRUPT_ENABLE | SPI_CR2_BIT_TX_BUFFER_EMPTY_INTERRUPT_ENABLE | SPI_CR2_BIT_ERROR_INTERRUPT_ENABLE);
         }
 
         if (arg_object->get_status_register_bit(SPI_SR_BIT_MODE_FAULT) == BIT_SET)
         {
             arg_object->set_error_bit(SPI_ERROR_MODE_FAULT);
             arg_object->clear_mode_fault_flag();
-        }
-
-        if (arg_object->module->error_code != SPI_ERROR_NONE)
-        {
             arg_object->disable_interrupts(SPI_CR2_BIT_RX_BUFFER_NOT_EMPTY_INTERRUPT_ENABLE | SPI_CR2_BIT_TX_BUFFER_EMPTY_INTERRUPT_ENABLE | SPI_CR2_BIT_ERROR_INTERRUPT_ENABLE);
-            arg_object->module->status = spi::MODULE_STATUS_READY;
-            arg_object->module->callbacks[spi::ERROR_CALLBACK_ID](arg_object);
         }
+        arg_object->handle_transaction_error();
+        arg_object->module->status = spi::MODULE_STATUS_READY;
+
         return;
     }
 }
@@ -826,7 +742,6 @@ void spi::send_inter_task_transaction_result(rtosal::message_queue_handle_t arg_
 
 void spi::close_isr(transaction_t arg_transaction_type)
 {
-
     uint32_t active_interrupts = 0;
 
     switch(arg_transaction_type)
@@ -834,29 +749,18 @@ void spi::close_isr(transaction_t arg_transaction_type)
         case TX_RX:
         {
             active_interrupts = SPI_CR2_BIT_ERROR_INTERRUPT_ENABLE;
-
-            if (flag_timeout(SPI_SR_BIT_TX_BUFFER_EMPTY, BIT_SET))
-            {
-                set_error_bit(SPI_ERROR_WAITING_FOR_FLAG);
-            }
-
+            flag_timeout(SPI_SR_BIT_TX_BUFFER_EMPTY, BIT_SET);
             break;
         }
         case TX_ONLY:
         {
             active_interrupts = SPI_CR2_BIT_TX_BUFFER_EMPTY_INTERRUPT_ENABLE | SPI_CR2_BIT_ERROR_INTERRUPT_ENABLE;
-
-            if (flag_timeout(SPI_SR_BIT_TX_BUFFER_EMPTY, BIT_SET) != PROCEDURE_STATUS_OK)
-            {
-                set_error_bit(SPI_ERROR_WAITING_FOR_FLAG);
-            }
-
+            flag_timeout(SPI_SR_BIT_TX_BUFFER_EMPTY, BIT_SET);
             break;
         }
         case RX_ONLY:
         {
             active_interrupts = SPI_CR2_BIT_RX_BUFFER_NOT_EMPTY_INTERRUPT_ENABLE | SPI_CR2_BIT_ERROR_INTERRUPT_ENABLE;
-
             break;
 
         }
@@ -881,27 +785,24 @@ void spi::close_isr(transaction_t arg_transaction_type)
     if (module->error_code != SPI_ERROR_NONE)
     {
         module->status = MODULE_STATUS_READY;
-        module->callbacks[ERROR_CALLBACK_ID](this);
+        handle_transaction_error();
     }
     else
     {
-        if (arg_transaction_type == RX_ONLY ||
-            (arg_transaction_type == TX_RX && module->status == MODULE_STATUS_BUSY_RX))
+        if (arg_transaction_type == TX_RX)
         {
-            module->status = MODULE_STATUS_READY;
-            module->callbacks[RX_COMPLETE_CALLBACK_ID](this);
+            handle_tx_rx_success();
         }
         else if (arg_transaction_type == TX_ONLY)
         {
-            module->status = MODULE_STATUS_READY;
-            module->callbacks[TX_COMPLETE_CALLBACK_ID](this);
+            handle_tx_success();
         }
-        else if (arg_transaction_type == TX_RX)
+        else if (arg_transaction_type == RX_ONLY || (arg_transaction_type == TX_RX && module->status == MODULE_STATUS_BUSY_RX))
         {
-            module->status = MODULE_STATUS_READY;
-            callback_tx_rx_complete();
-            complete_transaction_tx_rx_success();
+            handle_rx_success();
         }
+
+        module->status = MODULE_STATUS_READY;
     }
 }
 
@@ -915,17 +816,6 @@ spi::procedure_status_t spi::verify_communication_direction(uint32_t arg_intende
     }
 
     return status;
-}
-
-void spi::callback_tx_rx_complete()
-{
-    for (transaction_index = 0U; transaction_index <  transaction_byte_count; ++transaction_index)
-    {
-        active_packet.rx_bytes[packet_index++] = rx_pointer[transaction_index];
-    }
-
-    hal::gpio_write_pin(module->chip_select_port, module->chip_select_pin, GPIO_PIN_SET);
-    module->rx_data_ready_flag = 1U;
 }
 
 void spi::complete_transaction_tx_rx_success() const
@@ -1055,31 +945,16 @@ void spi::push_active_packet_to_return_buffer()
     }
 }
 
-void spi::chip_select_set_active(uint8_t arg_channel_id)
-{
-    channel_t channel;
-
-    get_channel_by_channel_id(channel, (int16_t)arg_channel_id);
-    hal::gpio_write_pin(channel.chip_select.port, channel.chip_select.pin, (GPIO_PinState) CHIP_SELECT_SET);
-}
-
-void spi::chip_select_set_inactive(uint8_t arg_channel_id)
-{
-    channel_t channel;
-
-    get_channel_by_channel_id(channel, (int16_t)arg_channel_id);
-    hal::gpio_write_pin(channel.chip_select.port, channel.chip_select.pin, (GPIO_PinState) CHIP_SELECT_RESET);
-}
-
 spi::procedure_status_t spi::wait_for_pending_flags_and_end_transaction(transaction_t arg_transaction_type)
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
     uint32_t pending_flag = 0U;
 
-    if ((module->settings.mode == SPI_CONFIG_MODE_CONTROLLER)
-        && ((module->settings.direction == SPI_CONFIG_DIRECTION_1_LINE)
-            || (module->settings.direction == SPI_CONFIG_DIRECTION_2_LINE_RX_ONLY)))
+    if ((module->settings.mode == SPI_CONFIG_MODE_CONTROLLER) && ((module->settings.direction == SPI_CONFIG_DIRECTION_1_LINE)
+        || (module->settings.direction == SPI_CONFIG_DIRECTION_2_LINE_RX_ONLY)))
+    {
         disable_module();
+    }
 
     if (module->settings.mode == SPI_CONFIG_MODE_CONTROLLER)
     {
@@ -1097,11 +972,7 @@ spi::procedure_status_t spi::wait_for_pending_flags_and_end_transaction(transact
         pending_flag = SPI_SR_BIT_RX_BUFFER_NOT_EMPTY;
     }
 
-    if (flag_timeout(pending_flag, BIT_CLEAR) != PROCEDURE_STATUS_OK)
-    {
-        set_error_bit(SPI_ERROR_WAITING_FOR_FLAG);
-        status = PROCEDURE_STATUS_TIMEOUT;
-    }
+    status = flag_timeout(pending_flag, BIT_CLEAR);
 
     return status;
 }
@@ -1121,16 +992,9 @@ spi::procedure_status_t spi::flag_timeout(uint32_t arg_status_reg_bit, bit_statu
             {
                 disable_module();
             }
-
+            set_error_bit(SPI_ERROR_WAITING_FOR_FLAG);
             module->status = MODULE_STATUS_READY;
-            if (unlock_module() == PROCEDURE_STATUS_OK)
-            {
-                return PROCEDURE_STATUS_TIMEOUT;
-            }
-            else
-            {
-                return PROCEDURE_STATUS_ERROR;
-            }
+            return PROCEDURE_STATUS_TIMEOUT;
         }
         --fallback_countdown;
     }

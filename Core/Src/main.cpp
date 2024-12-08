@@ -126,30 +126,19 @@ void start_spi_task(void *argument)
     spi::module_t spi_2_handle;
     int16_t rtd_0_channel_id = 0U;
     static uint32_t spi_task_count = 0U;
+
     rtosal::message_queue_handle_t tx_queue_handle;
     rtosal::message_queue_handle_t rx_queue_handle;
     tx_queue_handle = get_spi_2_client_tx_queue_handle();
     rx_queue_handle = get_spi_2_client_rx_queue_handle();
-//    uint8_t spi_tx_data[8] = {0, 1, 3, 5, 7, 9, 11, 13 };
-//    uint8_t spi_rx_data[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-//    HAL_SPI_RegisterCallback(&hspi2, HAL_SPI_TX_RX_COMPLETE_CB_ID, callback_spi_peripheral_tx_rx_complete);
-//    HAL_SPI_RegisterCallback(&hspi2, HAL_SPI_ERROR_CB_ID, callback_spi_controller_error);
+
     hal::spi_2.initialize(&spi_2_handle, SPI_2_ID, get_timer_2_handle());
-    hal::spi_2.register_callback(spi::TX_RX_COMPLETE_CALLBACK_ID, hal_callback_spi_2_tx_rx_complete);
-    hal::spi_2.register_callback(spi::ERROR_CALLBACK_ID, hal_callback_spi_2_error);
     hal::spi_2.create_channel(rtd_0_channel_id, PORT_B, GPIO_PIN_14, tx_queue_handle, rx_queue_handle);
     for(;;)
     {
-//        if (get_timer_2_handle()->Instance->CNT - spi_task_count > 50000U)
-//        {
-//            HAL_SPI_TransmitReceive_IT(&hspi2, spi_tx_data, spi_rx_data, 8);
-//            spi_task_count = get_timer_2_handle()->Instance->CNT;
-//        }
-
         hal::spi_2.receive_inter_task_transaction_requests();
         hal::spi_2.process_send_buffer();
         hal::spi_2.process_return_buffers();
-//        rtosal::thread_yield();
     }
 }
 

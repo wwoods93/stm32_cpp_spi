@@ -39,16 +39,16 @@ class spi
 {
     public:
 
-        static constexpr int8_t ISR_TX_8_BIT_2_LINE = 0U;
-        static constexpr int8_t ISR_RX_8_BIT_2_LINE = 1U;
-        static constexpr int8_t ISR_TX_16_BIT_2_LINE = 2U;
-        static constexpr int8_t ISR_RX_16_BIT_2_LINE = 3U;
+        static constexpr uint8_t    TX_SIZE_MAX                     = 8U;
 
-        static constexpr uint8_t SEND_STATE_BEGIN = 0U;
-        static constexpr uint8_t SEND_STATE_IN_PROGRESS = 1U;
-        static constexpr uint8_t SEND_STATE_COMPLETE = 2U;
+        static constexpr int8_t     ISR_TX_8_BIT_2_LINE             = 0U;
+        static constexpr int8_t     ISR_RX_8_BIT_2_LINE             = 1U;
+        static constexpr int8_t     ISR_TX_16_BIT_2_LINE            = 2U;
+        static constexpr int8_t     ISR_RX_16_BIT_2_LINE            = 3U;
 
-        #define TX_SIZE_MAX                                         8U
+        static constexpr uint8_t    SEND_STATE_BEGIN                = 0U;
+        static constexpr uint8_t    SEND_STATE_IN_PROGRESS          = 1U;
+        static constexpr uint8_t    SEND_STATE_COMPLETE             = 2U;
 
         static constexpr uint32_t   FLAG_TIMEOUT                    = 50U;
         static constexpr uint32_t   TRANSACTION_TIMEOUT             = 100U;
@@ -58,67 +58,55 @@ class spi
         static constexpr uint8_t    SPI_PROCEDURE_STATE_BUS_ERROR   = 1U;
         static constexpr uint8_t    SPI_PROCEDURE_STATE_DATA_ERROR  = 2U;
 
-        static constexpr uint8_t CHANNEL_0 = 0x00U;
-        static constexpr uint8_t CHANNEL_1 = 0x01U;
-        static constexpr uint8_t CHANNEL_2 = 0x02U;
-        static constexpr uint8_t CHANNEL_3 = 0x03U;
-        static constexpr uint8_t CHANNEL_4 = 0x04U;
-        static constexpr uint8_t CHANNEL_5 = 0x05U;
-        static constexpr uint8_t CHANNEL_6 = 0x06U;
-        static constexpr uint8_t CHANNEL_7 = 0x07U;
+        static constexpr uint8_t    CHANNEL_0                       = 0x00U;
+        static constexpr uint8_t    CHANNEL_1                       = 0x01U;
+        static constexpr uint8_t    CHANNEL_2                       = 0x02U;
+        static constexpr uint8_t    CHANNEL_3                       = 0x03U;
+        static constexpr uint8_t    CHANNEL_4                       = 0x04U;
+        static constexpr uint8_t    CHANNEL_5                       = 0x05U;
+        static constexpr uint8_t    CHANNEL_6                       = 0x06U;
+        static constexpr uint8_t    CHANNEL_7                       = 0x07U;
 
         typedef enum
         {
-            MODULE_UNLOCKED                 = 0x00U,
-            MODULE_LOCKED                   = 0x01U
+            MODULE_UNLOCKED                     = 0x00U,
+            MODULE_LOCKED                       = 0x01U
         } lock_t;
 
         typedef enum
         {
-            TX_RX                           = 0x00,
-            TX_ONLY                         = 0x01,
-            RX_ONLY                         = 0x02,
+            TX_RX                               = 0x00,
+            TX_ONLY                             = 0x01,
+            RX_ONLY                             = 0x02,
         }transaction_t;
 
         typedef enum
         {
-            DATA_REG_ID                     = 0x00U,
-            STATUS_REG_ID                   = 0x01U,
-            CONTROL_REG_1_ID                = 0x02U,
-            CONTROL_REG_2_ID                = 0x03U,
+            DATA_REG_ID                         = 0x00U,
+            STATUS_REG_ID                       = 0x01U,
+            CONTROL_REG_1_ID                    = 0x02U,
+            CONTROL_REG_2_ID                    = 0x03U,
         } register_id_t;
 
         typedef enum
         {
-            PROCEDURE_STATUS_OK             = 0x00U,
-            PROCEDURE_STATUS_ERROR          = 0x01U,
-            PROCEDURE_STATUS_BUSY           = 0x02U,
-            PROCEDURE_STATUS_TIMEOUT        = 0x03U
+            PROCEDURE_STATUS_OK                 = 0x00U,
+            PROCEDURE_STATUS_ERROR              = 0x01U,
+            PROCEDURE_STATUS_BUSY               = 0x02U,
+            PROCEDURE_STATUS_TIMEOUT            = 0x03U
         } procedure_status_t;
 
         typedef enum
         {
-            MODULE_STATUS_RESET             = 0x00U,
-            MODULE_STATUS_READY             = 0x01U,
-            MODULE_STATUS_BUSY              = 0x02U,
-            MODULE_STATUS_BUSY_TX           = 0x03U,
-            MODULE_STATUS_BUSY_RX           = 0x04U,
-            MODULE_STATUS_BUSY_TX_RX        = 0x05U,
-            MODULE_STATUS_ERROR             = 0x06U,
-            MODULE_STATUS_ABORT             = 0x07U
+            MODULE_STATUS_RESET                 = 0x00U,
+            MODULE_STATUS_READY                 = 0x01U,
+            MODULE_STATUS_BUSY                  = 0x02U,
+            MODULE_STATUS_BUSY_TX               = 0x03U,
+            MODULE_STATUS_BUSY_RX               = 0x04U,
+            MODULE_STATUS_BUSY_TX_RX            = 0x05U,
+            MODULE_STATUS_ERROR                 = 0x06U,
+            MODULE_STATUS_ABORT                 = 0x07U
         } module_status_t;
-
-        typedef enum
-        {
-            TX_COMPLETE_CALLBACK_ID         = 0x00U,
-            RX_COMPLETE_CALLBACK_ID         = 0x01U,
-            TX_RX_COMPLETE_CALLBACK_ID      = 0x02U,
-            TX_HALF_COMPLETE_CALLBACK_ID    = 0x03U,
-            RX_HALF_COMPLETE_CALLBACK_ID    = 0x04U,
-            TX_RX_HALF_COMPLETE_CALLBACK_ID = 0x05U,
-            ERROR_CALLBACK_ID               = 0x06U,
-            ABORT_CALLBACK_ID               = 0x07U,
-        } callback_id_t;
 
         typedef struct
         {
@@ -138,10 +126,10 @@ class spi
 
         typedef struct
         {
-            int16_t         channel_id;
-            chip_select_t   chip_select;
-            rtosal::message_queue_handle_t tx_message_queue;
-            rtosal::message_queue_handle_t rx_message_queue;
+            int16_t                         channel_id;
+            chip_select_t                   chip_select;
+            rtosal::message_queue_handle_t  tx_message_queue;
+            rtosal::message_queue_handle_t  rx_message_queue;
 
         } channel_t;
 
@@ -171,8 +159,6 @@ class spi
             uint8_t                     *rx_buffer_ptr;
             volatile uint16_t           tx_transfer_counter;
             volatile uint16_t           rx_transfer_counter;
-//            void                        (*tx_isr_ptr)(spi arg_object, struct _handle_t *arg_module);
-//            void                        (*rx_isr_ptr)(spi arg_object, struct _handle_t *arg_module);
             uint8_t                     rx_data_ready_flag;
             lock_t                      lock;
             hal::gpio_t*                chip_select_port;
@@ -180,16 +166,20 @@ class spi
             void (* callbacks[SPI_REGISTER_CALLBACK_COUNT]) (spi *arg_object);
         } module_t;
 
-        typedef void (*spi_callback_ptr_t)(spi *arg_object);
-
         module_t*                   module;
         packet_t                    active_packet;
-        hal::timer_handle_t*          timeout_timer_handle;
-        int16_t                     next_available_channel_id = 0U;
         int16_t                     next_available_packet_id = 0U;
-        uint32_t                    packets_requested_count;
-        uint32_t                    packets_received_count;
+        uint32_t                    packets_requested_count = 0U;
+        uint32_t                    packets_received_count = 0U;
+        uint8_t                     packet_index = 0U;
+        uint8_t                     transaction_byte_count = 0U;
+        uint8_t                     transaction_index = 0U;
+        int8_t                      tx_isr_id = ID_INVALID;
+        int8_t                      rx_isr_id = ID_INVALID;
+        uint8_t*                    rx_pointer;
+        hal::timer_handle_t*        timeout_timer_handle;
         uint32_t                    process_send_buffer_timeout_start;
+        int16_t                     next_available_channel_id = 0U;
         uint8_t                     channel_array[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
         std::queue<packet_t>        send_buffer;
@@ -215,18 +205,7 @@ class spi
             channel_t channel_7;
         } channel_list;
 
-        std::shared_ptr<uint8_t[]> shared_rx_ptr;
-        uint8_t packet_index = 0U;
-        uint8_t transaction_byte_count = 0U;
-        uint8_t transaction_index = 0U;
-        uint8_t* rx_pointer;
-
-        int8_t tx_isr_id = ID_INVALID;
-        int8_t rx_isr_id = ID_INVALID;
-
         procedure_status_t initialize(module_t* arg_module, uint8_t arg_instance_t, TIM_HandleTypeDef* arg_timeout_timer_handle);
-        procedure_status_t register_callback(callback_id_t arg_callback_id, spi_callback_ptr_t arg_callback_ptr) const;
-        [[nodiscard]] procedure_status_t unregister_callback(callback_id_t arg_callback_id) const;
         procedure_status_t create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue);
         void receive_inter_task_transaction_requests();
         void process_send_buffer();
@@ -237,23 +216,18 @@ class spi
         friend void rx_isr(spi arg_object, struct spi::_handle_t *arg_module);
         friend void spi_irq_handler(spi* arg_object);
 
-
     private:
 
         procedure_status_t spi_transmit_receive_interrupt(uint8_t *arg_tx_data_ptr, uint8_t *arg_rx_data_ptr, uint16_t arg_packet_size);
         static void send_inter_task_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet);
         void close_isr(transaction_t arg_transaction_type);
-        void set_tx_and_rx_interrupt_service_routines() const;
         [[nodiscard]] procedure_status_t verify_communication_direction(uint32_t arg_intended_direction) const;
-        void callback_tx_rx_complete();
         void complete_transaction_tx_rx_success() const;
         int16_t assign_next_available_channel_id();
         void get_channel_by_channel_id(channel_t& arg_channel, int16_t arg_channel_id);
         void push_active_packet_to_return_buffer();
-        void chip_select_set_active(uint8_t arg_channel_id);
-        void chip_select_set_inactive(uint8_t arg_channel_id);
         procedure_status_t wait_for_pending_flags_and_end_transaction(transaction_t arg_transaction_type);
-        [[nodiscard]] procedure_status_t flag_timeout(uint32_t arg_status_reg_bit, bit_status_t arg_bit_status) const;
+        procedure_status_t flag_timeout(uint32_t arg_status_reg_bit, bit_status_t arg_bit_status) const;
 
         void enable_module() const;
         void disable_module() const;
@@ -262,6 +236,10 @@ class spi
         void enable_interrupts(uint32_t arg_interrupts) const;
         void disable_interrupts(uint32_t arg_interrupts) const;
         [[nodiscard]] bit_status_t check_interrupt_source(uint32_t arg_interrupt) const;
+        void handle_tx_rx_success();
+        void handle_tx_success();
+        void handle_rx_success();
+        void handle_transaction_error() const;
         void set_register_bit(register_id_t arg_register, uint32_t arg_bit) const;
         void clear_register_bit(register_id_t arg_register, uint32_t arg_bit) const;
         [[nodiscard]] bit_status_t get_status_register_bit(uint32_t arg_bit) const;
@@ -312,6 +290,35 @@ inline bit_status_t spi::check_interrupt_source(uint32_t arg_interrupt) const
     }
 
     return bit_status;
+}
+
+inline void spi::handle_tx_rx_success()
+{
+    for (transaction_index = 0U; transaction_index <  transaction_byte_count; ++transaction_index)
+    {
+        active_packet.rx_bytes[packet_index++] = rx_pointer[transaction_index];
+    }
+
+    hal::gpio_write_pin(module->chip_select_port, module->chip_select_pin, GPIO_PIN_SET);
+    module->rx_data_ready_flag = 1U;
+}
+
+inline void spi::handle_tx_success()
+{
+    hal::gpio_write_pin(module->chip_select_port, module->chip_select_pin, GPIO_PIN_SET);
+    module->rx_data_ready_flag = 1U;
+}
+
+inline void spi::handle_rx_success()
+{
+    hal::gpio_write_pin(module->chip_select_port, module->chip_select_pin, GPIO_PIN_SET);
+    module->rx_data_ready_flag = 1U;
+}
+
+inline void spi::handle_transaction_error() const
+{
+    hal::gpio_write_pin(module->chip_select_port, module->chip_select_pin, GPIO_PIN_SET);
+    module->rx_data_ready_flag = 1U;
 }
 
 inline void spi::set_register_bit(register_id_t arg_register, uint32_t arg_bit) const
