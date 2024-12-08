@@ -57,23 +57,14 @@ void hal_callback_spi_1_error(spi *arg_object)
 
 void hal_callback_spi_2_tx_rx_complete(spi *arg_object)
 {
-
-//    if (hal::gpio_read_pin(arg_object->module->chip_select_port, arg_object->module->chip_select_pin) == GPIO_PIN_RESET)
-//    {
-        hal::gpio_write_pin(arg_object->module->chip_select_port, arg_object->module->chip_select_pin, GPIO_PIN_SET);
-//    }
-
+    hal::gpio_write_pin(arg_object->module->chip_select_port, arg_object->module->chip_select_pin, GPIO_PIN_SET);
     arg_object->module->rx_data_ready_flag = 1U;
-
 }
 
 void hal_callback_spi_2_error(spi *arg_object)
 {
-//    if (hal::gpio_read_pin(arg_object->module->chip_select_port, arg_object->module->chip_select_pin) == GPIO_PIN_RESET)
-//    {
-        hal::gpio_write_pin(arg_object->module->chip_select_port, arg_object->module->chip_select_pin, GPIO_PIN_SET);
-//    }
 
+    hal::gpio_write_pin(arg_object->module->chip_select_port, arg_object->module->chip_select_pin, GPIO_PIN_SET);
     arg_object->module->rx_data_ready_flag = 1U;
 }
 

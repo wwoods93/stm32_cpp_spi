@@ -39,6 +39,10 @@ class spi
 {
     public:
 
+        static constexpr uint8_t SEND_STATE_BEGIN = 0U;
+        static constexpr uint8_t SEND_STATE_IN_PROGRESS = 1U;
+        static constexpr uint8_t SEND_STATE_COMPLETE = 2U;
+
         #define TX_SIZE_MAX                                         8U
 
         static constexpr uint32_t   FLAG_TIMEOUT                    = 50U;
@@ -212,7 +216,9 @@ class spi
         std::shared_ptr<uint8_t[]> shared_rx_ptr;
         uint8_t packet_index = 0U;
         uint8_t transaction_byte_count = 0U;
-
+        uint8_t transaction_index = 0U;
+        uint8_t* rx_pointer;
+        void callback_tx_rx_complete();
         procedure_status_t initialize(module_t* arg_module, uint8_t arg_instance_t, TIM_HandleTypeDef* arg_timeout_timer_handle);
         procedure_status_t register_callback(callback_id_t arg_callback_id, spi_callback_ptr_t arg_callback_ptr) const;
         [[nodiscard]] procedure_status_t unregister_callback(callback_id_t arg_callback_id) const;

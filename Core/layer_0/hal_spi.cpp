@@ -20,6 +20,7 @@
 /* layer_0 includes */
 #include "hal.h"
 #include "hal_wrapper.h"
+#include "hal_callback.h"
 #include "hal_spi_definitions.h"
 /* layer_1_rtosal includes */
 #include "rtosal.h"
@@ -35,6 +36,17 @@
 /* hal_spi header */
 #include "hal_spi.h"
 
+
+void spi::callback_tx_rx_complete()
+{
+    for (transaction_index = 0U; transaction_index <  transaction_byte_count; ++transaction_index)
+    {
+        active_packet.rx_bytes[packet_index++] = rx_pointer[transaction_index];
+    }
+
+    hal::gpio_write_pin(module->chip_select_port, module->chip_select_pin, GPIO_PIN_SET);
+    module->rx_data_ready_flag = 1U;
+}
 
 spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instance_id, hal::timer_handle_t* arg_timeout_timer_handle)
 {
@@ -190,6 +202,9 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
     }
 
     set_tx_and_rx_interrupt_service_routines();
+    std::shared_ptr<uint8_t[]> rx_pointer_tmp(new uint8_t[TX_SIZE_MAX]);
+    rx_pointer = rx_pointer_tmp.get();
+
 
     module->error_code   = SPI_ERROR_NONE;
     module->status        = MODULE_STATUS_READY;
@@ -413,15 +428,13 @@ void spi_irq_handler(spi* arg_object)
         && (arg_object->get_status_register_bit(SPI_SR_BIT_RX_BUFFER_NOT_EMPTY) == BIT_SET)
         && (arg_object->check_interrupt_source(SPI_CR2_BIT_RX_BUFFER_NOT_EMPTY_INTERRUPT_ENABLE) == BIT_SET))
     {
-        rx_2_line_8_bit_isr(*arg_object, arg_object->module);
-//        arg_object->module->rx_isr_ptr(*arg_object, arg_object->module);
+        arg_object->module->rx_isr_ptr(*arg_object, arg_object->module);
         return;
     }
     if ((arg_object->get_status_register_bit(SPI_SR_BIT_TX_BUFFER_EMPTY) == BIT_SET)
         && (arg_object->check_interrupt_source(SPI_CR2_BIT_TX_BUFFER_EMPTY_INTERRUPT_ENABLE) == BIT_SET))
     {
-        tx_2_line_8_bit_isr(*arg_object, arg_object->module);
-//        arg_object->module->tx_isr_ptr(*arg_object, arg_object->module);
+        arg_object->module->tx_isr_ptr(*arg_object, arg_object->module);
         return;
     }
     if (((arg_object->get_status_register_bit(SPI_SR_BIT_MODE_FAULT) == BIT_SET)
@@ -634,7 +647,8 @@ void spi::close_isr(transaction_t arg_transaction_type)
         else if (arg_transaction_type == TX_RX)
         {
             module->status = MODULE_STATUS_READY;
-            module->callbacks[TX_RX_COMPLETE_CALLBACK_ID](this);
+//            module->callbacks[TX_RX_COMPLETE_CALLBACK_ID](this);
+            callback_tx_rx_complete();
             complete_transaction_tx_rx_success();
         }
     }
@@ -962,42 +976,69 @@ uint8_t spi::process_return_buffers()
 
 void spi::process_send_buffer()
 {
-    process_send_buffer_timeout_start = get_timer_count(timeout_timer_handle);
-    while (!send_buffer.empty() && get_timer_count(timeout_timer_handle) - process_send_buffer_timeout_start < PROCESS_SEND_BUFFER_TIMEOUT)
+    static uint8_t send_state = SEND_STATE_BEGIN;
+    static uint8_t current_transaction = 0U;
+
+    if (!send_buffer.empty())
     {
-        memset(&active_packet, '\0', sizeof(packet_t));
-        memcpy(&active_packet, &send_buffer.front(), sizeof(packet_t));
-
-        module->chip_select.port = active_packet.chip_select.port;
-        module->chip_select.pin = active_packet.chip_select.pin;
-        memset(&active_packet.rx_bytes, '\0', sizeof(active_packet.rx_bytes));
-
-        packet_index = 0U;
-        transaction_byte_count = 0U;
-
-        ++packets_requested_count;
-        std::shared_ptr<uint8_t[]> rx_pointer_tmp(new uint8_t[TX_SIZE_MAX]);
-
-        for (uint8_t current_transaction : active_packet.bytes_per_transaction)
+        switch (send_state)
         {
-            transaction_byte_count = current_transaction;
-            if (transaction_byte_count != 0U)
+            case SEND_STATE_BEGIN:
             {
-                spi_transmit_receive_interrupt(&active_packet.tx_bytes[packet_index], rx_pointer_tmp.get(), transaction_byte_count);
-                while (!module->rx_data_ready_flag);
-                module->rx_data_ready_flag = 0U;
+                memset(&active_packet, '\0', sizeof(packet_t));
+                memcpy(&active_packet, &send_buffer.front(), sizeof(packet_t));
 
-                for (uint8_t index = 0U; index <  transaction_byte_count; ++index)
+                module->chip_select.port = active_packet.chip_select.port;
+                module->chip_select.pin = active_packet.chip_select.pin;
+                memset(&active_packet.rx_bytes, '\0', sizeof(active_packet.rx_bytes));
+
+                packet_index = 0U;
+                transaction_byte_count = 0U;
+                ++packets_requested_count;
+                current_transaction = 0U;
+                send_state = SEND_STATE_IN_PROGRESS;
+                break;
+            }
+            case SEND_STATE_IN_PROGRESS:
+            {
+
+                process_send_buffer_timeout_start = get_timer_count(timeout_timer_handle);
+                while (current_transaction < TX_SIZE_MAX && get_timer_count(timeout_timer_handle) - process_send_buffer_timeout_start < PROCESS_SEND_BUFFER_TIMEOUT)
                 {
-                    active_packet.rx_bytes[packet_index++] = rx_pointer_tmp[index];
+                    transaction_byte_count = active_packet.bytes_per_transaction[current_transaction];
+                    if (transaction_byte_count != 0U)
+                    {
+                        spi_transmit_receive_interrupt(&active_packet.tx_bytes[packet_index], rx_pointer, transaction_byte_count);
+                    }
+                    if (module->rx_data_ready_flag)
+                    {
+                        if (++current_transaction >= TX_SIZE_MAX)
+                        {
+                            send_state = SEND_STATE_COMPLETE;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
+                break;
+            }
+            case SEND_STATE_COMPLETE:
+            {
+                ++packets_received_count;
+                send_buffer.pop();
+                push_active_packet_to_return_buffer();
+                memset(&active_packet, '\0', sizeof(packet_t));
+                active_packet.channel_id = ID_INVALID;
+                send_state = SEND_STATE_BEGIN;
+                break;
+            }
+            default:
+            {
+                break;
             }
         }
-        ++packets_received_count;
-        send_buffer.pop();
-        push_active_packet_to_return_buffer();
-        memset(&active_packet, '\0', sizeof(packet_t));
-        active_packet.channel_id = ID_INVALID;
     }
 }
 
