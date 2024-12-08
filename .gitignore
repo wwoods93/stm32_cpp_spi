@@ -65,6 +65,7 @@ dkms.conf
 out/
 cmake-build-release/
 cmake-build-debug/
+cmake-build*/
 community.*
 cubemx-clion.jar
 .idea/workspace.xml
