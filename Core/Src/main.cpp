@@ -133,7 +133,7 @@ void start_spi_task(void *argument)
     rx_queue_handle = get_spi_2_client_rx_queue_handle();
 
     hal::spi_2.initialize(&spi_2_handle, SPI_2_ID, get_timer_2_handle());
-    hal::spi_2.create_channel(rtd_0_channel_id, PORT_B, GPIO_PIN_14, tx_queue_handle, rx_queue_handle);
+    hal::spi_2.create_channel(rtd_0_channel_id, PORT_B, GPIO_PIN_14, 1U, tx_queue_handle, rx_queue_handle);
     for(;;)
     {
         hal::spi_2.receive_inter_task_transaction_requests();
@@ -178,7 +178,6 @@ void Error_Handler(void)
 void SPI2_IRQHandler()
 {
     spi_irq_handler(hal::get_spi_2_object());
-//    HAL_SPI_IRQHandler(&hspi2);
 }
 
 

@@ -152,15 +152,15 @@ static constexpr uint32_t SPI_CONFIG_BAUD_RATE_PRESCALER_64                     
 static constexpr uint32_t SPI_CONFIG_BAUD_RATE_PRESCALER_128                            = (SPI_CR1_BIT_BAUD_RATE_2 | SPI_CR1_BIT_BAUD_RATE_1);
 static constexpr uint32_t SPI_CONFIG_BAUD_RATE_PRESCALER_256                            = (SPI_CR1_BIT_BAUD_RATE_2 | SPI_CR1_BIT_BAUD_RATE_1 | SPI_CR1_BIT_BAUD_RATE_0);
 
-static constexpr uint8_t  SPI_ERROR_NONE                                                = (0x00000000U);
-static constexpr uint8_t  SPI_ERROR_MODE_FAULT                                          = (0x00000001U);
-static constexpr uint8_t  SPI_ERROR_DURING_CRC_CALCULATION                              = (0x00000002U);
-static constexpr uint8_t  SPI_ERROR_OVERRUN                                             = (0x00000004U);
-static constexpr uint8_t  SPI_ERROR_TI_MODE_FRAME_FORMAT                                = (0x00000008U);
-static constexpr uint8_t  SPI_ERROR_DMA_TRANSFER                                        = (0x00000010U);
-static constexpr uint8_t  SPI_ERROR_WAITING_FOR_FLAG                                    = (0x00000020U);
-static constexpr uint8_t  SPI_ERROR_DURING_ABORT                                        = (0x00000040U);
-static constexpr uint8_t  SPI_ERROR_CALLBACK_INVALID                                    = (0x00000080U);
+//static constexpr uint8_t  SPI_ERROR_NONE                                                = (0x00000000U);
+//static constexpr uint8_t  SPI_ERROR_MODE_FAULT                                          = (0x00000001U);
+//static constexpr uint8_t  SPI_ERROR_DURING_CRC_CALCULATION                              = (0x00000002U);
+//static constexpr uint8_t  SPI_ERROR_OVERRUN                                             = (0x00000004U);
+//static constexpr uint8_t  SPI_ERROR_TI_MODE_FRAME_FORMAT                                = (0x00000008U);
+//static constexpr uint8_t  SPI_ERROR_DMA_TRANSFER                                        = (0x00000010U);
+//static constexpr uint8_t  SPI_ERROR_WAITING_FOR_FLAG                                    = (0x00000020U);
+//static constexpr uint8_t  SPI_ERROR_DURING_ABORT                                        = (0x00000040U);
+//static constexpr uint8_t  SPI_ERROR_CALLBACK_INVALID                                    = (0x00000080U);
 
 static constexpr uint8_t  SPI_PROCEDURE_ERROR_NONE                                      = 0U;
 static constexpr uint8_t  SPI_PROCEDURE_STATE_BUS_ERROR                                 = 1U;

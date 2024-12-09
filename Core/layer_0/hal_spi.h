@@ -67,6 +67,45 @@ class spi
         static constexpr uint8_t    CHANNEL_6                       = 0x06U;
         static constexpr uint8_t    CHANNEL_7                       = 0x07U;
 
+        static constexpr uint32_t  SPI_ERROR_NONE                            = (0x00000000U);
+        static constexpr uint32_t  SPI_ERROR_MODE_FAULT                      = (0x00000001U);
+        static constexpr uint32_t  SPI_ERROR_CRC                             = (0x00000002U);
+        static constexpr uint32_t  SPI_ERROR_OVERRUN                         = (0x00000004U);
+        static constexpr uint32_t  SPI_ERROR_TI_MODE_FRAME_FORMAT            = (0x00000008U);
+        static constexpr uint32_t  SPI_ERROR_DMA_TRANSFER                    = (0x00000010U);
+        static constexpr uint32_t  SPI_ERROR_WAITING_FOR_FLAG                = (0x00000020U);
+        static constexpr uint32_t  SPI_ERROR_DURING_ABORT                    = (0x00000040U);
+        static constexpr uint32_t  SPI_ERROR_CONFIG_INVALID                  = (0x00000080U);
+        static constexpr uint32_t  SPI_ERROR_CHANNEL_ID                      = (0x00000100U);
+        static constexpr uint32_t  SPI_ERROR_CHIP_SELECT                     = (0x00000200U);
+        static constexpr uint32_t  SPI_ERROR_INTER_TASK_QUEUE_TO_CLIENT      = (0x00000400U);
+        static constexpr uint32_t  SPI_ERROR_INTER_TASK_QUEUE_FROM_CLIENT    = (0x00000800U);
+        static constexpr uint32_t  SPI_ERROR_TRANSACTION_TIMEOUT             = (0x00001000U);
+        static constexpr uint32_t  SPI_ERROR_SEND_BUFFER                     = (0x00002000U);
+        static constexpr uint32_t  SPI_ERROR_RETURN_BUFFER                   = (0x00004000U);
+        static constexpr uint32_t  SPI_ERROR_PAYLOAD                         = (0x00008000U);
+        static constexpr uint32_t  SPI_ERROR_BUS_NOT_AVAILABLE               = (0x00010000U);
+        static constexpr uint32_t  SPI_ERROR_CREATE_CHANNEL                  = (0x00020000U);
+
+        static constexpr uint32_t  CONFIG_STATUS_BIT_OK                      = (uint32_t)(0x00000000U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_INSTANCE                = (0x00000001U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_MODULE                  = (0x00000002U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_CLOCK_PHASE             = (0x00000004U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_CLOCK_POLARITY          = (0x00000008U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_MODE                    = (0x00000010U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_BAUD_RATE               = (0x00000020U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_FIRST_BIT_SETTING       = (0x00000040U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_CHIP_SELECT             = (0x00000080U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_DIRECTION               = (0x00000100U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_FRAME_FORMAT            = (0x00000200U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_CRC                     = (0x00000400U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_TIMEOUT_TIMER           = (0x00000800U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_DATA_SIZE               = (0x00001000U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_MSP_INIT                = (0x00002000U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_ISR_INIT                = (0x00004000U);
+        static constexpr uint32_t  CONFIG_STATUS_BIT_RX_PTR_INIT             = (0x00008000U);
+
+
         typedef enum
         {
             MODULE_UNLOCKED                     = 0x00U,
@@ -128,6 +167,7 @@ class spi
         {
             int16_t                         channel_id;
             chip_select_t                   chip_select;
+            uint8_t                         is_inter_task;
             rtosal::message_queue_handle_t  tx_message_queue;
             rtosal::message_queue_handle_t  rx_message_queue;
 
@@ -146,14 +186,15 @@ class spi
             uint32_t ti_mode;
             uint32_t crc_calculation;
             uint32_t crc_polynomial;
-        } settings_t;
+        } config_t;
 
-        typedef struct _handle_t
+        typedef struct module_struct
         {
-            hal_spi_t                   *instance;
-            settings_t                  settings;
+            hal_spi_t                   *register_map;
+            config_t                    config;
             volatile module_status_t    status;
-            volatile uint32_t           error_code;
+            volatile uint32_t           error_bit_field;
+            volatile uint32_t           config_status_bit_field;
             chip_select_t               chip_select;
             uint8_t                     *tx_buffer_ptr;
             uint8_t                     *rx_buffer_ptr;
@@ -163,7 +204,6 @@ class spi
             lock_t                      lock;
             hal::gpio_t*                chip_select_port;
             uint16_t                    chip_select_pin;
-            void (* callbacks[SPI_REGISTER_CALLBACK_COUNT]) (spi *arg_object);
         } module_t;
 
         module_t*                   module;
@@ -171,6 +211,7 @@ class spi
         int16_t                     next_available_packet_id = 0U;
         uint32_t                    packets_requested_count = 0U;
         uint32_t                    packets_received_count = 0U;
+        uint8_t                     process_send_buffer_state = SEND_STATE_BEGIN;
         uint8_t                     packet_index = 0U;
         uint8_t                     transaction_byte_count = 0U;
         uint8_t                     transaction_index = 0U;
@@ -206,23 +247,22 @@ class spi
         } channel_list;
 
         procedure_status_t initialize(module_t* arg_module, uint8_t arg_instance_t, TIM_HandleTypeDef* arg_timeout_timer_handle);
-        procedure_status_t create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue);
-        void receive_inter_task_transaction_requests();
-        void process_send_buffer();
-        uint8_t process_return_buffers();
+        procedure_status_t create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, uint8_t arg_is_inter_task, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue);
+        procedure_status_t receive_inter_task_transaction_requests();
+        procedure_status_t process_send_buffer();
+        procedure_status_t process_return_buffers();
         [[nodiscard]] uint32_t get_packets_requested_count() const;
         [[nodiscard]] uint32_t get_packets_received_count() const;
-        friend void tx_isr(spi arg_object, struct spi::_handle_t *arg_module);
-        friend void rx_isr(spi arg_object, struct spi::_handle_t *arg_module);
+        friend void tx_isr(spi arg_object, struct spi::module_struct *arg_module);
+        friend void rx_isr(spi arg_object, struct spi::module_struct *arg_module);
         friend void spi_irq_handler(spi* arg_object);
 
     private:
 
         procedure_status_t spi_transmit_receive_interrupt(uint8_t *arg_tx_data_ptr, uint8_t *arg_rx_data_ptr, uint16_t arg_packet_size);
-        static void send_inter_task_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet);
+        procedure_status_t send_inter_task_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet);
         void close_isr(transaction_t arg_transaction_type);
         [[nodiscard]] procedure_status_t verify_communication_direction(uint32_t arg_intended_direction) const;
-        void complete_transaction_tx_rx_success() const;
         int16_t assign_next_available_channel_id();
         void get_channel_by_channel_id(channel_t& arg_channel, int16_t arg_channel_id);
         void push_active_packet_to_return_buffer();
@@ -232,7 +272,7 @@ class spi
         void enable_module() const;
         void disable_module() const;
         [[nodiscard]] procedure_status_t lock_module() const;
-        [[nodiscard]] procedure_status_t unlock_module() const;
+        procedure_status_t unlock_module() const;
         void enable_interrupts(uint32_t arg_interrupts) const;
         void disable_interrupts(uint32_t arg_interrupts) const;
         [[nodiscard]] bit_status_t check_interrupt_source(uint32_t arg_interrupt) const;
@@ -244,13 +284,15 @@ class spi
         void clear_register_bit(register_id_t arg_register, uint32_t arg_bit) const;
         [[nodiscard]] bit_status_t get_status_register_bit(uint32_t arg_bit) const;
         void set_error_bit(uint32_t arg_bit) const;
+        void set_config_status_bit(uint32_t arg_bit) const;
+        void clear_config_status_bit_field();
         void clear_mode_fault_flag() const;
         void clear_overrun_flag() const;
 };
 
 inline void spi::enable_module() const
 {
-    module->instance->CONTROL_REG_1 |= SPI_CR1_BIT_SPI_ENABLE;
+    module->register_map->CONTROL_REG_1 |= SPI_CR1_BIT_SPI_ENABLE;
 }
 
 inline void spi::disable_module() const
@@ -273,18 +315,18 @@ inline spi::procedure_status_t spi::unlock_module() const
 
 inline void spi::enable_interrupts(uint32_t arg_interrupts) const
 {
-    module->instance->CONTROL_REG_2 |= arg_interrupts;
+    module->register_map->CONTROL_REG_2 |= arg_interrupts;
 }
 
 inline void spi::disable_interrupts(uint32_t arg_interrupts) const
 {
-    module->instance->CONTROL_REG_2 &= (~arg_interrupts);
+    module->register_map->CONTROL_REG_2 &= (~arg_interrupts);
 }
 
 inline bit_status_t spi::check_interrupt_source(uint32_t arg_interrupt) const
 {
     bit_status_t bit_status = BIT_CLEAR;
-    if ((module->instance->CONTROL_REG_2 & arg_interrupt) == arg_interrupt)
+    if ((module->register_map->CONTROL_REG_2 & arg_interrupt) == arg_interrupt)
     {
         bit_status = BIT_SET;
     }
@@ -327,12 +369,12 @@ inline void spi::set_register_bit(register_id_t arg_register, uint32_t arg_bit) 
     {
         case CONTROL_REG_1_ID:
         {
-            module->instance->CONTROL_REG_1 |= arg_bit;
+            module->register_map->CONTROL_REG_1 |= arg_bit;
             break;
         }
         case CONTROL_REG_2_ID:
         {
-            module->instance->CONTROL_REG_2 |= arg_bit;
+            module->register_map->CONTROL_REG_2 |= arg_bit;
             break;
         }
         default:
@@ -348,17 +390,17 @@ inline void spi::clear_register_bit(register_id_t arg_register, uint32_t arg_bit
     {
         case STATUS_REG_ID:
         {
-            module->instance->STATUS_REG &= (~arg_bit);
+            module->register_map->STATUS_REG &= (~arg_bit);
             break;
         }
         case CONTROL_REG_1_ID:
         {
-            module->instance->CONTROL_REG_1 &= (~arg_bit);
+            module->register_map->CONTROL_REG_1 &= (~arg_bit);
             break;
         }
         case CONTROL_REG_2_ID:
         {
-            module->instance->CONTROL_REG_2 &= (~arg_bit);
+            module->register_map->CONTROL_REG_2 &= (~arg_bit);
             break;
         }
         default:
@@ -371,7 +413,7 @@ inline void spi::clear_register_bit(register_id_t arg_register, uint32_t arg_bit
 inline bit_status_t spi::get_status_register_bit(uint32_t arg_bit) const
 {
     bit_status_t bit_status = BIT_CLEAR;
-    if ((module->instance->STATUS_REG & arg_bit & SPI_SR_BITS_MASK) == (arg_bit & SPI_SR_BITS_MASK))
+    if ((module->register_map->STATUS_REG & arg_bit & SPI_SR_BITS_MASK) == (arg_bit & SPI_SR_BITS_MASK))
     {
         bit_status = BIT_SET;
     }
@@ -380,20 +422,30 @@ inline bit_status_t spi::get_status_register_bit(uint32_t arg_bit) const
 
 inline void spi::set_error_bit(uint32_t arg_bit) const
 {
-    module->error_code |= arg_bit;
+    module->error_bit_field |= arg_bit;
+}
+
+inline void spi::set_config_status_bit(uint32_t arg_bit) const
+{
+    module->config_status_bit_field |= arg_bit;
+}
+
+inline void spi::clear_config_status_bit_field()
+{
+    module->config_status_bit_field = CONFIG_STATUS_BIT_OK;
 }
 
 inline void spi::clear_mode_fault_flag() const
 {
-    uint32_t register_contents = module->instance->STATUS_REG;
+    uint32_t register_contents = module->register_map->STATUS_REG;
     UNUSED_CAST_VOID(register_contents);
     clear_register_bit(CONTROL_REG_1_ID, SPI_CR1_BIT_SPI_ENABLE);
 }
 
 inline void spi::clear_overrun_flag() const
 {
-    uint32_t data_reg_contents = module->instance->DATA_REG;
-    uint32_t status_reg_contents = module->instance->STATUS_REG;
+    uint32_t data_reg_contents = module->register_map->DATA_REG;
+    uint32_t status_reg_contents = module->register_map->STATUS_REG;
     UNUSED_CAST_VOID(data_reg_contents);
     UNUSED_CAST_VOID(status_reg_contents);
 }
