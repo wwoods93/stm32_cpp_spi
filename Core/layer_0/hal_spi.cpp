@@ -59,7 +59,7 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
         case SPI_2_ID:
         {
             module->register_map = SPI_2;
-            module->config.baud_rate_prescaler = SPI_CONFIG_BAUD_RATE_PRESCALER_64;
+            module->config.baud_rate_prescaler = SPI_CONFIG_BAUD_RATE_PRESCALER_32;
 
             break;
         }
@@ -91,7 +91,7 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
     module->config.direction = SPI_CONFIG_DIRECTION_2_LINE;
     module->config.ti_mode = SPI_CONFIG_TI_MODE_DISABLE;
     module->config.crc_calculation = SPI_CONFIG_CRC_CALCULATION_DISABLE;
-    module->config.crc_polynomial = 0U;
+    module->config.crc_polynomial = 7U;
     module->rx_data_ready_flag = 0U;
 
     if (module->register_map != SPI_1 && module->register_map != SPI_2 && module->register_map != SPI_3 && module->register_map != SPI_4)
@@ -396,6 +396,130 @@ spi::procedure_status_t spi::create_channel(int16_t& arg_channel_id, hal::gpio_t
     return PROCEDURE_STATUS_OK;
 }
 
+int16_t spi::send(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
+{
+    if (channel_array[arg_channel_id] == 1U)
+    {
+
+        channel_t channel;
+        get_channel_by_channel_id(channel, arg_channel_id);
+
+        packet_t packet;
+        memset(&packet, '\0', sizeof(packet_t));
+        packet.packet_id = next_available_packet_id++;
+        packet.channel_id = arg_channel_id;
+        packet.chip_select.port = channel.chip_select.port;
+        packet.chip_select.pin = channel.chip_select.pin;
+
+        memcpy(&packet.bytes_per_transaction, arg_bytes_per_tx, sizeof(packet.bytes_per_transaction));
+        memcpy(&packet.tx_bytes, arg_tx_bytes, sizeof(packet.tx_bytes));
+        send_buffer.push(packet);
+        return packet.channel_id;
+    }
+    return ID_INVALID;
+}
+
+spi::procedure_status_t spi::receive(uint8_t* arg_rx_bytes, int16_t arg_channel_id)
+{
+    procedure_status_t status = PROCEDURE_STATUS_OK;
+    packet_t packet;
+    switch(arg_channel_id)
+    {
+        case CHANNEL_0:
+        {
+            memcpy(&packet, &channel_0_rx_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_1:
+        {
+            memcpy(&packet, &channel_1_rx_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_2:
+        {
+            memcpy(&packet, &channel_2_rx_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_3:
+        {
+            memcpy(&packet, &channel_3_rx_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_4:
+        {
+            memcpy(&packet, &channel_4_rx_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_5:
+        {
+            memcpy(&packet, &channel_5_rx_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_6:
+        {
+            memcpy(&packet, &channel_6_rx_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_7:
+        {
+            memcpy(&packet, &channel_7_rx_packet, sizeof(packet_t));
+            break;
+        }
+        default:
+        {
+            status = PROCEDURE_STATUS_ERROR;
+            break;
+        }
+    }
+    memset(&arg_rx_bytes, '\0', sizeof(arg_rx_bytes));
+    memcpy(&arg_rx_bytes, &packet.rx_bytes, sizeof(arg_rx_bytes));
+
+    return status;
+}
+
+int16_t spi::send_inter_task(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
+{
+    if (channel_array[arg_channel_id] == 1U)
+    {
+        packet_t packet;
+        channel_t channel;
+        memset(&packet, '\0', sizeof(packet_t));
+        packet.packet_id = next_available_packet_id++;
+        packet.channel_id = arg_channel_id;
+        memcpy(&packet.bytes_per_transaction, arg_bytes_per_tx, sizeof(packet.bytes_per_transaction));
+        memcpy(&packet.tx_bytes, arg_tx_bytes, sizeof(packet.tx_bytes));
+
+        get_channel_by_channel_id(channel, arg_channel_id);
+        if (rtosal::message_queue_send(channel.tx_message_queue, &packet, 0U) == rtosal::OS_OK)
+        {
+            return packet.packet_id;
+        }
+    }
+    return ID_INVALID;
+}
+
+spi::procedure_status_t spi::receive_inter_task(uint8_t* arg_rx_bytes, int16_t arg_channel_id)
+{
+    procedure_status_t status = PROCEDURE_STATUS_TIMEOUT;
+    if (channel_array[arg_channel_id] == 1U)
+    {
+        channel_t channel;
+
+        get_channel_by_channel_id(channel, arg_channel_id);
+
+        packet_t packet;
+
+        if (rtosal::message_queue_receive( channel.rx_message_queue, &packet, 0U) == rtosal::OS_OK)
+        {
+            memset(arg_rx_bytes, '\0', TX_SIZE_MAX);
+            memcpy(arg_rx_bytes, &packet.rx_bytes, TX_SIZE_MAX);
+            status = PROCEDURE_STATUS_OK;
+        }
+    }
+
+    return status;
+}
+
 spi::procedure_status_t spi::receive_inter_task_transaction_requests()
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
@@ -508,14 +632,18 @@ spi::procedure_status_t spi::process_send_buffer()
     return status;
 }
 
-spi::procedure_status_t spi::process_return_buffers()
+spi::procedure_status_t spi::process_return_buffers(spi::packet_t& arg_packet)
 {
     procedure_status_t status = PROCEDURE_STATUS_ERROR;
     uint8_t buffer_accessed = 0U;
     channel_t channel;
     packet_t packet;
 
+
     memset(&packet, '\0', sizeof(packet_t));
+    memset(&arg_packet, '\0', sizeof(packet_t));
+    arg_packet.packet_id = ID_INVALID;
+    arg_packet.channel_id = ID_INVALID;
 
     for (int16_t index = 0U; index < next_available_channel_id; ++index)
     {
@@ -626,6 +754,10 @@ spi::procedure_status_t spi::process_return_buffers()
                 if (channel.is_inter_task)
                 {
                     status = send_inter_task_transaction_result(channel.rx_message_queue, packet);
+                }
+                else
+                {
+                    post_channel_rx_result(packet, channel.channel_id);
                 }
             }
         }
@@ -839,9 +971,8 @@ spi::procedure_status_t spi::spi_transmit_receive_interrupt(uint8_t *arg_tx_data
 spi::procedure_status_t spi::send_inter_task_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet)
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
-    common_packet_t rx_common_packet;
-    rtosal::build_common_packet(rx_common_packet, arg_packet.channel_id, arg_packet.rx_bytes, arg_packet.bytes_per_transaction);
-    if (rtosal::message_queue_send(arg_message_queue_id, &rx_common_packet, 0U) != rtosal::OS_OK)
+
+    if (rtosal::message_queue_send(arg_message_queue_id, &arg_packet, 0U) != rtosal::OS_OK)
     {
         set_error_bit(SPI_ERROR_INTER_TASK_QUEUE_TO_CLIENT);
         status = PROCEDURE_STATUS_ERROR;
@@ -1043,6 +1174,66 @@ void spi::push_active_packet_to_return_buffer()
             break;
         }
     }
+}
+
+spi::procedure_status_t spi::post_channel_rx_result(spi::packet_t arg_packet, int16_t arg_channel_id)
+{
+    switch(arg_channel_id)
+    {
+        case CHANNEL_0:
+        {
+            memset(&channel_0_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_0_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_1:
+        {
+            memset(&channel_1_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_1_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_2:
+        {
+            memset(&channel_2_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_3_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_3:
+        {
+            memset(&channel_3_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_3_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_4:
+        {
+            memset(&channel_4_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_4_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_5:
+        {
+            memset(&channel_5_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_5_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_6:
+        {
+            memset(&channel_6_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_6_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        case CHANNEL_7:
+        {
+            memset(&channel_7_rx_packet, '\0', sizeof(packet_t));
+            memcpy(&channel_7_rx_packet, &arg_packet, sizeof(packet_t));
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
+    return PROCEDURE_STATUS_OK;
 }
 
 spi::procedure_status_t spi::wait_for_pending_flags_and_end_transaction(transaction_t arg_transaction_type)

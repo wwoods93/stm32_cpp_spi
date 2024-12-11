@@ -11,7 +11,8 @@
  **********************************************************************************************************************/
 
 /* c/c++ includes */
-
+#include <memory>
+#include <cstring>
 /* stm32 includes */
 #include "stm32f4xx_it.h"
 /* third-party includes */
@@ -22,7 +23,7 @@
 #include "../layer_0/hal_callback.h"
 #include "../layer_0/rtosal.h"
 /* layer_1_rtosal includes */
-
+#include "../layer_0/rtosal_globals.h"
 /* layer_2_device includes */
 
 /* layer_3_control includes */
@@ -35,6 +36,8 @@
 
 #include "main.h"
 #include "cmsis_os.h"
+
+static constexpr uint8_t SYSTEM_RUN = 1U;
 
 osThreadId_t client_taskHandle;
 osThreadId_t spi_taskHandle;
@@ -49,12 +52,11 @@ const osTimerAttr_t comms_handler_tick_attributes = { .name = "comms_handler_tic
 
 SPI_HandleTypeDef hspi2;
 void MX_SPI2_Init();
-void callback_spi_peripheral_tx_rx_complete(SPI_HandleTypeDef *hspi);
-void callback_spi_controller_error(SPI_HandleTypeDef *hspi);
 
-void start_client_task(void *argument);
-void start_spi_task(void *argument);
-void start_heartbeat_task(void *argument);
+[[noreturn]] void start_client_task(void *argument);
+[[noreturn]] void start_spi_task(void *argument);
+[[noreturn]] void start_heartbeat_task(void *argument);
+
 void comms_handler_tick_callback(void *argument);
 
 int main()
@@ -88,66 +90,67 @@ int main()
     }
 }
 
-void start_client_task(void *argument)
+[[noreturn]] void start_client_task(void *argument)
 {
+    osEventFlagsId_t initialization_event_flags_handle = get_initialization_event_flags_handle();
+    rtosal::event_flag_wait(initialization_event_flags_handle, READY_FOR_USER_INIT_FLAG, rtosal::OS_FLAGS_ANY, rtosal::OS_WAIT_FOREVER);
+
     static uint32_t client_task_count = 0U;
-    common_packet_t request_packet;
-    common_packet_t result_packet;
-    uint8_t complete_tx[8] = { 0x01, 0x03, 0x05, 0x06, 0x08, 0x0A, 0x0B, 0x0F};
+    uint8_t tx_bytes[8] = { 0x01, 0x03, 0x05, 0x06, 0x08, 0x0A, 0x0B, 0x0F};
+    uint8_t rx_bytes[8] = { 1, 0, 1, 0, 1, 0, 1, 0 };
     uint8_t bytes_per_tx[8] = { 8, 0, 0, 0, 0, 0, 0, 0 };
-    rtosal::message_queue_handle_t tx_queue_handle;
-    rtosal::message_queue_handle_t rx_queue_handle;
-    tx_queue_handle = get_spi_2_client_tx_queue_handle();
-    rx_queue_handle = get_spi_2_client_rx_queue_handle();
 
-    rtosal::build_common_packet(request_packet, 0U, complete_tx, bytes_per_tx);
-    for(;;)
+    while (SYSTEM_RUN)
     {
-        if (client_task_count > 50U)
-        {
-            if (rtosal::message_queue_send(tx_queue_handle, &request_packet, 0U) == rtosal::OS_OK)
-            {
-                client_task_count = 10U;
-            }
-            client_task_count = 0U;
-        }
-
-        if (rtosal::message_queue_receive( rx_queue_handle, &result_packet, 0U) == rtosal::OS_OK)
-        {
-
-        }
-        ++client_task_count;
+//        hal::spi_2.send_inter_task(tx_bytes, bytes_per_tx, 0);
+//
+//        rx_bytes[0] = 1;
+//        hal::spi_2.receive_inter_task(rx_bytes, 0);
+//        if (rx_bytes[0] == 0)
+//        {
+//            rx_bytes[0] = 5;
+//            ++client_task_count;
+//        }
         rtosal::thread_yield();
     }
 }
 
-void start_spi_task(void *argument)
+[[noreturn]] void start_spi_task(void *argument)
 {
-    spi::module_t spi_2_handle;
-    int16_t rtd_0_channel_id = 0U;
-    static uint32_t spi_task_count = 0U;
+    osEventFlagsId_t initialization_event_flags_handle = get_initialization_event_flags_handle();
+    rtosal::message_queue_handle_t tx_queue_handle = get_spi_2_client_tx_queue_handle();
+    rtosal::message_queue_handle_t rx_queue_handle = get_spi_2_client_rx_queue_handle();
 
-    rtosal::message_queue_handle_t tx_queue_handle;
-    rtosal::message_queue_handle_t rx_queue_handle;
-    tx_queue_handle = get_spi_2_client_tx_queue_handle();
-    rx_queue_handle = get_spi_2_client_rx_queue_handle();
+    uint8_t tx_bytes[8] = { 0x01, 0x03, 0x05, 0x06, 0x08, 0x0A, 0x0B, 0x0F};
+    uint8_t rx_bytes[8] = { 1, 0, 1, 0, 1, 0, 1, 0 };
+    uint8_t bytes_per_tx[8] = { 8, 0, 0, 0, 0, 0, 0, 0 };
+
+    spi::module_t spi_2_handle;
+    int16_t channel_0_id = 0U;
+    static uint32_t spi_task_count = 0U;
+    spi::packet_t packet;
 
     hal::spi_2.initialize(&spi_2_handle, SPI_2_ID, get_timer_2_handle());
-    hal::spi_2.create_channel(rtd_0_channel_id, PORT_B, GPIO_PIN_14, 1U, tx_queue_handle, rx_queue_handle);
-    for(;;)
+    hal::spi_2.create_channel(channel_0_id, PORT_B, GPIO_PIN_14, 0U, tx_queue_handle, rx_queue_handle);
+    rtosal::event_flag_set(initialization_event_flags_handle, READY_FOR_USER_INIT_FLAG);
+
+    while (SYSTEM_RUN)
     {
+        hal::spi_2.send(tx_bytes, bytes_per_tx, 0);
+        hal::spi_2.receive(rx_bytes, 0);
+
         hal::spi_2.receive_inter_task_transaction_requests();
         hal::spi_2.process_send_buffer();
-        hal::spi_2.process_return_buffers();
+        hal::spi_2.process_return_buffers(packet);
     }
 }
 
 
-void start_heartbeat_task(void *argument)
+[[noreturn]] void start_heartbeat_task(void *argument)
 {
     static uint32_t count = 0U;
 
-    for(;;)
+    while (SYSTEM_RUN)
     {
         if (count > 200000U)
         {
@@ -172,7 +175,6 @@ void Error_Handler(void)
     while (1)
     {
     }
-    /* USER CODE END Error_Handler_Debug */
 }
 
 void SPI2_IRQHandler()

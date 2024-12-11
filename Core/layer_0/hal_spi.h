@@ -234,6 +234,15 @@ class spi
         std::queue<packet_t>        return_buffer_6;
         std::queue<packet_t>        return_buffer_7;
 
+        packet_t channel_0_rx_packet;
+        packet_t channel_1_rx_packet;
+        packet_t channel_2_rx_packet;
+        packet_t channel_3_rx_packet;
+        packet_t channel_4_rx_packet;
+        packet_t channel_5_rx_packet;
+        packet_t channel_6_rx_packet;
+        packet_t channel_7_rx_packet;
+
         struct
         {
             channel_t channel_0;
@@ -246,11 +255,23 @@ class spi
             channel_t channel_7;
         } channel_list;
 
+
+
+
+
+
+
+
+
         procedure_status_t initialize(module_t* arg_module, uint8_t arg_instance_t, TIM_HandleTypeDef* arg_timeout_timer_handle);
         procedure_status_t create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, uint8_t arg_is_inter_task, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue);
+        int16_t send(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        procedure_status_t receive(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
+        int16_t send_inter_task(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        procedure_status_t receive_inter_task(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
         procedure_status_t receive_inter_task_transaction_requests();
         procedure_status_t process_send_buffer();
-        procedure_status_t process_return_buffers();
+        procedure_status_t process_return_buffers(packet_t& arg_packet);
         [[nodiscard]] uint32_t get_packets_requested_count() const;
         [[nodiscard]] uint32_t get_packets_received_count() const;
         friend void tx_isr(spi arg_object, struct spi::module_struct *arg_module);
@@ -266,6 +287,7 @@ class spi
         int16_t assign_next_available_channel_id();
         void get_channel_by_channel_id(channel_t& arg_channel, int16_t arg_channel_id);
         void push_active_packet_to_return_buffer();
+        procedure_status_t post_channel_rx_result(packet_t arg_packet, int16_t arg_channel_id);
         procedure_status_t wait_for_pending_flags_and_end_transaction(transaction_t arg_transaction_type);
         procedure_status_t flag_timeout(uint32_t arg_status_reg_bit, bit_status_t arg_bit_status) const;
 

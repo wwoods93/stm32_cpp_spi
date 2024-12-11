@@ -25,6 +25,7 @@
 #define TRANSACTION_BYTE_COUNT_MAX          8U
 #define COMMON_PACKET_ARRAY_LENGTH_MAX      32U
 
+//static constexpr uint32_t READY_FOR_USER_INIT_FLAG      = 0x01000000;
 
 osMessageQueueId_t get_extrusion_task_to_comms_handler_queue_1_handle();
 osMessageQueueId_t get_extrusion_task_to_comms_handler_queue_2_handle();
@@ -37,6 +38,8 @@ osMessageQueueId_t get_comms_handler_to_extrusion_task_queue_3_handle();
 
 osMessageQueueId_t get_spi_2_client_tx_queue_handle();
 osMessageQueueId_t get_spi_2_client_rx_queue_handle();
+osEventFlagsId_t get_initialization_event_flags_handle();
+
 osMessageQueueId_t get_comms_handler_output_data_queue_handle();
 osMessageQueueId_t get_serial_monitor_usart_queue_handle();
 osMutexId_t get_zone_1_band_heater_mutex_handle();
