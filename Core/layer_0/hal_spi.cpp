@@ -162,24 +162,6 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
         return status;
     }
 
-    module->status = MODULE_STATUS_BUSY;
-    disable_module();
-
-    set_register_bit(CONTROL_REG_1_ID, (
-        (module->config.clock_phase & SPI_CR1_BIT_CLOCK_PHASE) |
-        (module->config.clock_polarity & SPI_CR1_BIT_CLOCK_POLARITY) |
-        (module->config.mode & (SPI_CR1_BIT_CONTROLLER_MODE | SPI_CR1_BIT_INTERNAL_CHIP_SELECT)) |
-        (module->config.baud_rate_prescaler & SPI_CR1_BIT_BAUD_RATE) |
-        (module->config.first_bit_setting & SPI_CR1_BIT_LSB_FIRST) |
-        (module->config.chip_select_setting & SPI_CR1_BIT_SOFTWARE_CHIP_SELECT) |
-        (module->config.data_size & SPI_CR1_BIT_DATA_FRAME_FORMAT) |
-        (module->config.crc_calculation & SPI_CR1_BIT_CRC_ENABLE) |
-        (module->config.direction & (SPI_CR1_BIT_RECEIVE_ONLY | SPI_CR1_BIT_BIDIRECTIONAL_MODE))));
-
-    set_register_bit(CONTROL_REG_2_ID,
-                     (((module->config.chip_select_setting >> 16U) & SPI_CR2_BIT_CHIP_SELECT_OUTPUT_ENABLE) |
-                      (module->config.ti_mode & SPI_CR2_BIT_FRAME_FORMAT)));
-
     switch (arg_instance_id)
     {
         case SPI_1_ID:
@@ -199,6 +181,28 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
             break;
         }
     }
+
+    module->status = MODULE_STATUS_BUSY;
+    disable_module();
+
+    set_register_bit(CONTROL_REG_1_ID, (
+        (module->config.clock_phase & SPI_CR1_BIT_CLOCK_PHASE) |
+        (module->config.clock_polarity & SPI_CR1_BIT_CLOCK_POLARITY) |
+        (module->config.mode & (SPI_CR1_BIT_CONTROLLER_MODE | SPI_CR1_BIT_INTERNAL_CHIP_SELECT)) |
+        (module->config.baud_rate_prescaler & SPI_CR1_BIT_BAUD_RATE) |
+        (module->config.first_bit_setting & SPI_CR1_BIT_LSB_FIRST) |
+        (module->config.chip_select_setting & SPI_CR1_BIT_SOFTWARE_CHIP_SELECT) |
+        (module->config.data_size & SPI_CR1_BIT_DATA_FRAME_FORMAT) |
+        (module->config.crc_calculation & SPI_CR1_BIT_CRC_ENABLE) |
+        (module->config.direction & (SPI_CR1_BIT_RECEIVE_ONLY | SPI_CR1_BIT_BIDIRECTIONAL_MODE))));
+
+    set_register_bit(CONTROL_REG_2_ID,
+                     (((module->config.chip_select_setting >> 16U) & SPI_CR2_BIT_CHIP_SELECT_OUTPUT_ENABLE) |
+                      (module->config.ti_mode & SPI_CR2_BIT_FRAME_FORMAT)));
+
+    module->register_map->I2S_CONFIG_REG &= ~(0x01UL << 11U);
+
+
 
     switch (module->config.direction)
     {
@@ -560,72 +564,71 @@ spi::procedure_status_t spi::process_send_buffer()
     procedure_status_t status = PROCEDURE_STATUS_OK;
 
     static uint8_t current_transaction = 0U;
+    static uint8_t bus_ready = 0U;
 
     if (!send_buffer.empty())
     {
-        switch (process_send_buffer_state)
+        if (process_send_buffer_state == SEND_STATE_BEGIN)
         {
-            case SEND_STATE_BEGIN:
-            {
-                memset(&active_packet, '\0', sizeof(packet_t));
-                memcpy(&active_packet, &send_buffer.front(), sizeof(packet_t));
+            memset(&active_packet, '\0', sizeof(packet_t));
+            memcpy(&active_packet, &send_buffer.front(), sizeof(packet_t));
 
-                module->chip_select.port = active_packet.chip_select.port;
-                module->chip_select.pin = active_packet.chip_select.pin;
-                memset(&active_packet.rx_bytes, '\0', sizeof(active_packet.rx_bytes));
+            module->chip_select.port = active_packet.chip_select.port;
+            module->chip_select.pin = active_packet.chip_select.pin;
+            memset(&active_packet.rx_bytes, '\0', sizeof(active_packet.rx_bytes));
 
-                packet_index = 0U;
-                transaction_byte_count = 0U;
-                ++packets_requested_count;
-                current_transaction = 0U;
-                process_send_buffer_state = SEND_STATE_IN_PROGRESS;
-                break;
-            }
-            case SEND_STATE_IN_PROGRESS:
+            packet_index = 0U;
+            transaction_byte_count = 0U;
+            ++packets_requested_count;
+            current_transaction = 0U;
+            bus_ready = 1U;
+            process_send_buffer_state = SEND_STATE_IN_PROGRESS;
+        }
+
+        if (process_send_buffer_state == SEND_STATE_IN_PROGRESS)
+        {
+//            process_send_buffer_timeout_start = get_timer_count(timeout_timer_handle);
+            while (current_transaction < TX_SIZE_MAX)
             {
-                process_send_buffer_timeout_start = get_timer_count(timeout_timer_handle);
-                while (current_transaction < TX_SIZE_MAX)
+                transaction_byte_count = active_packet.bytes_per_transaction[current_transaction];
+                if (transaction_byte_count != 0U && bus_ready)
                 {
-                    transaction_byte_count = active_packet.bytes_per_transaction[current_transaction];
-                    if (transaction_byte_count != 0U)
-                    {
-                        spi_transmit_receive_interrupt(&active_packet.tx_bytes[packet_index], rx_pointer, transaction_byte_count);
-                    }
-                    if (module->rx_data_ready_flag)
-                    {
-                        if (++current_transaction >= TX_SIZE_MAX)
-                        {
-                            process_send_buffer_state = SEND_STATE_COMPLETE;
-                        }
-                    }
-                    else
-                    {
-                        break;
-                    }
-                    if (get_timer_count(timeout_timer_handle) - process_send_buffer_timeout_start > PROCESS_SEND_BUFFER_TIMEOUT)
-                    {
-                        set_error_bit(SPI_ERROR_TRANSACTION_TIMEOUT);
-                        status = PROCEDURE_STATUS_TIMEOUT;
-                        break;
-                    }
-
+                    process_send_buffer_timeout_start = get_timer_count(timeout_timer_handle);
+                    spi_transmit_receive_interrupt(&active_packet.tx_bytes[packet_index], rx_pointer, transaction_byte_count);
+                    bus_ready = 0U;
                 }
-                break;
+
+                if (get_timer_count(timeout_timer_handle) - process_send_buffer_timeout_start > PROCESS_SEND_BUFFER_TIMEOUT)
+                {
+                    set_error_bit(SPI_ERROR_TRANSACTION_TIMEOUT);
+                    status = PROCEDURE_STATUS_TIMEOUT;
+                    break;
+                }
+
+                if (module->rx_data_ready_flag)
+                {
+                    bus_ready = 1U;
+                    if (++current_transaction >= TX_SIZE_MAX)
+                    {
+                        process_send_buffer_state = SEND_STATE_COMPLETE;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+
             }
-            case SEND_STATE_COMPLETE:
-            {
-                ++packets_received_count;
-                send_buffer.pop();
-                push_active_packet_to_return_buffer();
-                memset(&active_packet, '\0', sizeof(packet_t));
-                active_packet.channel_id = ID_INVALID;
-                process_send_buffer_state = SEND_STATE_BEGIN;
-                break;
-            }
-            default:
-            {
-                break;
-            }
+        }
+
+        if (process_send_buffer_state == SEND_STATE_COMPLETE)
+        {
+            ++packets_received_count;
+            send_buffer.pop();
+            push_active_packet_to_return_buffer();
+            memset(&active_packet, '\0', sizeof(packet_t));
+            active_packet.channel_id = ID_INVALID;
+            process_send_buffer_state = SEND_STATE_BEGIN;
         }
     }
 

@@ -52,7 +52,7 @@ class spi
 
         static constexpr uint32_t   FLAG_TIMEOUT                    = 50U;
         static constexpr uint32_t   TRANSACTION_TIMEOUT             = 100U;
-        static constexpr uint32_t   PROCESS_SEND_BUFFER_TIMEOUT     = 50U;
+        static constexpr uint32_t   PROCESS_SEND_BUFFER_TIMEOUT     = 5000U;
         static constexpr uint16_t   FALLBACK_COUNTDOWN              = 1000U;
         static constexpr uint8_t    SPI_PROCEDURE_ERROR_NONE        = 0U;
         static constexpr uint8_t    SPI_PROCEDURE_STATE_BUS_ERROR   = 1U;

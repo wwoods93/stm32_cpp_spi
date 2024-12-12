@@ -39,15 +39,17 @@
 
 static constexpr uint8_t SYSTEM_RUN = 1U;
 
-osThreadId_t client_taskHandle;
-osThreadId_t spi_taskHandle;
-osThreadId_t heartbeat_taskHandle;
+osThreadId_t client_task_handle;
+osThreadId_t spi_task_handle;
+osThreadId_t heartbeat_task_handle;
+osTimerId_t comms_handler_tick_handle;
+
 const osThreadAttr_t client_task_attributes     = { .name = "client_task",      .stack_size = 512 * 4, .priority = (osPriority_t) osPriorityNormal, };
 const osThreadAttr_t spi_task_attributes        = { .name = "spi_task",         .stack_size = 512 * 4, .priority = (osPriority_t) osPriorityNormal, };
 const osThreadAttr_t heartbeat_task_attributes  = { .name = "heartbeat_task",   .stack_size = 128 * 4, .priority = (osPriority_t) osPriorityNormal, };
 
 
-osTimerId_t comms_handler_tickHandle;
+
 const osTimerAttr_t comms_handler_tick_attributes = { .name = "comms_handler_tick" };
 
 SPI_HandleTypeDef hspi2;
@@ -68,18 +70,14 @@ int main()
     MX_TIM2_Init();
     MX_RTC_Init();
 
-    MX_SPI3_Init();
-    MX_SPI2_Init();
     HAL_TIM_Base_Start(get_timer_2_handle());
 
     osKernelInitialize();
 
-    comms_handler_tickHandle = osTimerNew(comms_handler_tick_callback, osTimerPeriodic, nullptr, &comms_handler_tick_attributes);
-
-
-    client_taskHandle = osThreadNew(start_client_task, nullptr, &client_task_attributes);
-    spi_taskHandle = osThreadNew(start_spi_task, nullptr, &spi_task_attributes);
-    heartbeat_taskHandle = osThreadNew(start_heartbeat_task, nullptr, &heartbeat_task_attributes);
+    comms_handler_tick_handle = osTimerNew(comms_handler_tick_callback, osTimerPeriodic, nullptr, &comms_handler_tick_attributes);
+    client_task_handle = osThreadNew(start_client_task, nullptr, &client_task_attributes);
+    spi_task_handle = osThreadNew(start_spi_task, nullptr, &spi_task_attributes);
+    heartbeat_task_handle = osThreadNew(start_heartbeat_task, nullptr, &heartbeat_task_attributes);
 
     rtosal::initialize();
     osKernelStart();
@@ -125,17 +123,22 @@ int main()
     uint8_t rx_bytes[8] = { 1, 0, 1, 0, 1, 0, 1, 0 };
     uint8_t bytes_per_tx[8] = { 8, 0, 0, 0, 0, 0, 0, 0 };
 
-    spi::module_t spi_2_handle;
     int16_t channel_0_id = 0U;
     static uint32_t spi_task_count = 0U;
     spi::packet_t packet;
 
+    spi::module_t spi_2_handle;
     hal::spi_2.initialize(&spi_2_handle, SPI_2_ID, get_timer_2_handle());
     hal::spi_2.create_channel(channel_0_id, PORT_B, GPIO_PIN_14, 0U, tx_queue_handle, rx_queue_handle);
     rtosal::event_flag_set(initialization_event_flags_handle, READY_FOR_USER_INIT_FLAG);
 
     while (SYSTEM_RUN)
     {
+        if (get_timer_count(get_timer_2_handle()) - spi_task_count > 1000000)
+        {
+            HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+            spi_task_count = get_timer_count(get_timer_2_handle());
+        }
         hal::spi_2.send(tx_bytes, bytes_per_tx, 0);
         hal::spi_2.receive(rx_bytes, 0);
 
@@ -152,22 +155,20 @@ int main()
 
     while (SYSTEM_RUN)
     {
-        if (count > 200000U)
-        {
-            HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-            count = 0U;
-        }
-        ++count;
+//        if (count > 200000U)
+//        {
+//            HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//            count = 0U;
+//        }
+//        ++count;
         rtosal::thread_yield();
     }
 }
-
 
 void comms_handler_tick_callback(void *argument)
 {
 
 }
-
 
 void Error_Handler(void)
 {
