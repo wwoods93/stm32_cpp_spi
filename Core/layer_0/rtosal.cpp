@@ -22,6 +22,7 @@
 /* driver includes */
 
 /* rtos abstraction includes */
+#include "hal_spi.h"
 #include "rtosal_globals.h"
 /* sys op includes */
 
@@ -34,6 +35,9 @@ osMessageQueueId_t spi_2_client_rx_queue_handle;
 const osMessageQueueAttr_t spi_2_client_tx_queue_attributes = { .name = "spi_2_extrusion_task_tx_queue" };
 const osMessageQueueAttr_t spi_2_client_rx_queue_attributes = { .name = "spi_2_extrusion_task_rx_queue" };
 
+osEventFlagsId_t initialization_event_flags_handle;
+const osEventFlagsAttr_t initialization_event_flags_attributes = { .name = "initialization_event_flags" };
+
 osMessageQueueId_t get_spi_2_client_tx_queue_handle()
 {
     return spi_2_client_tx_queue_handle;
@@ -44,13 +48,19 @@ osMessageQueueId_t get_spi_2_client_rx_queue_handle()
     return spi_2_client_rx_queue_handle;
 }
 
+osEventFlagsId_t get_initialization_event_flags_handle()
+{
+    return initialization_event_flags_handle;
+}
+
 
 namespace rtosal
 {
     void initialize()
     {
-        spi_2_client_tx_queue_handle = osMessageQueueNew((uint32_t)QUEUE_LENGTH_MAX, (uint32_t)sizeof(common_packet_t), &spi_2_client_tx_queue_attributes);
-        spi_2_client_rx_queue_handle = osMessageQueueNew((uint32_t)QUEUE_LENGTH_MAX, (uint32_t)sizeof(common_packet_t), &spi_2_client_rx_queue_attributes);
+        spi_2_client_tx_queue_handle = osMessageQueueNew((uint32_t)QUEUE_LENGTH_MAX, (uint32_t)sizeof(spi::packet_t), &spi_2_client_tx_queue_attributes);
+        spi_2_client_rx_queue_handle = osMessageQueueNew((uint32_t)QUEUE_LENGTH_MAX, (uint32_t)sizeof(spi::packet_t), &spi_2_client_rx_queue_attributes);
+        initialization_event_flags_handle = osEventFlagsNew(&initialization_event_flags_attributes);
     }
 
     #if (USE_CMSIS_OS2 == 1U)

@@ -51,28 +51,28 @@
 ////UART_HandleTypeDef huart2;
 //
 ///* Definitions for client_task */
-//osThreadId_t client_taskHandle;
+//osThreadId_t client_task_handle;
 //const osThreadAttr_t client_task_attributes = {
 //  .name = "client_task",
 //  .stack_size = 512 * 4,
 //  .priority = (osPriority_t) osPriorityNormal,
 //};
 ///* Definitions for spi_task */
-//osThreadId_t spi_taskHandle;
+//osThreadId_t spi_task_handle;
 //const osThreadAttr_t spi_task_attributes = {
 //  .name = "spi_task",
 //  .stack_size = 512 * 4,
 //  .priority = (osPriority_t) osPriorityNormal,
 //};
 ///* Definitions for heartbeat_task */
-//osThreadId_t heartbeat_taskHandle;
+//osThreadId_t heartbeat_task_handle;
 //const osThreadAttr_t heartbeat_task_attributes = {
 //  .name = "heartbeat_task",
 //  .stack_size = 128 * 4,
 //  .priority = (osPriority_t) osPriorityNormal,
 //};
 ///* Definitions for comms_handler_tick */
-//osTimerId_t comms_handler_tickHandle;
+//osTimerId_t comms_handler_tick_handle;
 //const osTimerAttr_t comms_handler_tick_attributes = {
 //  .name = "comms_handler_tick"
 //};
@@ -179,7 +179,7 @@
 //
 //  /* Create the timer(s) */
 //  /* creation of comms_handler_tick */
-//  comms_handler_tickHandle = osTimerNew(comms_handler_tick_callback, osTimerPeriodic, NULL, &comms_handler_tick_attributes);
+//  comms_handler_tick_handle = osTimerNew(comms_handler_tick_callback, osTimerPeriodic, NULL, &comms_handler_tick_attributes);
 //
 //  /* USER CODE BEGIN RTOS_TIMERS */
 //  /* start timers, add new ones, ... */
@@ -191,13 +191,13 @@
 //
 //  /* Create the thread(s) */
 //  /* creation of client_task */
-//  client_taskHandle = osThreadNew(start_client_task, NULL, &client_task_attributes);
+//  client_task_handle = osThreadNew(start_client_task, NULL, &client_task_attributes);
 //
 //  /* creation of spi_task */
-//  spi_taskHandle = osThreadNew(start_spi_task, NULL, &spi_task_attributes);
+//  spi_task_handle = osThreadNew(start_spi_task, NULL, &spi_task_attributes);
 //
 //  /* creation of heartbeat_task */
-//  heartbeat_taskHandle = osThreadNew(start_heartbeat_task, NULL, &heartbeat_task_attributes);
+//  heartbeat_task_handle = osThreadNew(start_heartbeat_task, NULL, &heartbeat_task_attributes);
 //
 //  /* USER CODE BEGIN RTOS_THREADS */
 //  /* add threads, ... */

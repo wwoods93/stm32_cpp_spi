@@ -52,7 +52,16 @@ namespace hal
 
     void gpio_write_pin(gpio_t* arg_port_name, uint16_t arg_gpio_pin, uint8_t arg_pin_state)
     {
-        HAL_GPIO_WritePin((GPIO_TypeDef *)arg_port_name, arg_gpio_pin, (GPIO_PinState)arg_pin_state);
+        assert_param(IS_GPIO_PIN(GPIO_Pin));
+        assert_param(IS_GPIO_PIN_ACTION(PinState));
+        if(arg_pin_state != GPIO_PIN_RESET)
+        {
+            arg_port_name->BSRR = arg_gpio_pin;
+        }
+        else
+        {
+            arg_port_name->BSRR = (uint32_t)arg_gpio_pin << 16U;
+        }
     }
 
     uint8_t gpio_read_pin(gpio_t* arg_port_name, uint16_t arg_gpio_pin)
