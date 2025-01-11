@@ -110,7 +110,6 @@ class spi
         static constexpr uint32_t  CONFIG_STATUS_BIT_ISR_INIT                = (0x00004000U);
         static constexpr uint32_t  CONFIG_STATUS_BIT_RX_PTR_INIT             = (0x00008000U);
 
-
         typedef enum
         {
             MODULE_UNLOCKED                     = 0x00U,
@@ -172,7 +171,7 @@ class spi
         {
             int16_t                         channel_id;
             chip_select_t                   chip_select;
-            uint8_t                         is_inter_task;
+            uint8_t                         is_remote_client;
             rtosal::message_queue_handle_t  tx_message_queue;
             rtosal::message_queue_handle_t  rx_message_queue;
 
@@ -262,24 +261,21 @@ class spi
             channel_t channel_7;
         } channel_list;
 
-
-
-
-
-
-
-
-
         procedure_status_t initialize(module_t* arg_module, uint8_t arg_instance_t, TIM_HandleTypeDef* arg_timeout_timer_handle);
         procedure_status_t create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, uint8_t arg_is_inter_task, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue);
         procedure_status_t send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
         procedure_status_t send_receive_byte(uint8_t& arg_tx_byte, uint8_t& arg_rx_byte, int16_t arg_channel_id);
-        procedure_status_t receive(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
         int16_t send_async(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
         procedure_status_t receive_async(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
-        procedure_status_t receive_inter_task_transaction_requests();
-        procedure_status_t process_send_buffer();
-        procedure_status_t process_return_buffers(packet_t& arg_packet);
+        procedure_status_t process_async(packet_t& arg_packet);
+
+        int16_t send_async_local(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        int16_t send_async_remote(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        procedure_status_t receive_async_local(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
+        procedure_status_t receive_async_remote(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
+
+
+
         [[nodiscard]] uint32_t get_packets_requested_count() const;
         [[nodiscard]] uint32_t get_packets_received_count() const;
         friend void tx_isr(spi arg_object, struct spi::module_struct *arg_module);
@@ -289,7 +285,10 @@ class spi
     private:
 
         procedure_status_t spi_transmit_receive_interrupt(uint8_t *arg_tx_data_ptr, uint8_t *arg_rx_data_ptr, uint16_t arg_packet_size);
-        procedure_status_t send_inter_task_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet);
+        procedure_status_t process_async_transaction_requests();
+        procedure_status_t process_async_send_buffer();
+        procedure_status_t process_async_return_buffers(packet_t& arg_packet);
+        procedure_status_t send_remote_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet);
         void close_isr(transaction_t arg_transaction_type);
         [[nodiscard]] procedure_status_t verify_communication_direction(uint32_t arg_intended_direction) const;
         int16_t assign_next_available_channel_id();
@@ -315,7 +314,7 @@ class spi
         [[nodiscard]] bit_status_t get_status_register_bit(uint32_t arg_bit) const;
         void set_error_bit(uint32_t arg_bit) const;
         void set_config_status_bit(uint32_t arg_bit) const;
-        void clear_config_status_bit_field();
+        void clear_config_status_bit_field() const;
         void clear_mode_fault_flag() const;
         void clear_overrun_flag() const;
 };
@@ -460,7 +459,7 @@ inline void spi::set_config_status_bit(uint32_t arg_bit) const
     module->config_status_bit_field |= arg_bit;
 }
 
-inline void spi::clear_config_status_bit_field()
+inline void spi::clear_config_status_bit_field() const
 {
     module->config_status_bit_field = CONFIG_STATUS_BIT_OK;
 }

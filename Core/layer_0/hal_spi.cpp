@@ -295,7 +295,7 @@ spi::procedure_status_t spi::create_channel(int16_t& arg_channel_id, hal::gpio_t
     new_channel.channel_id = new_channel_id;
     new_channel.chip_select.port = arg_chip_select_port;
     new_channel.chip_select.pin  = arg_chip_select_pin;
-    new_channel.is_inter_task    = arg_is_inter_task;
+    new_channel.is_remote_client    = arg_is_inter_task;
     new_channel.tx_message_queue = arg_tx_message_queue;
     new_channel.rx_message_queue = arg_rx_message_queue;
 
@@ -315,7 +315,7 @@ spi::procedure_status_t spi::create_channel(int16_t& arg_channel_id, hal::gpio_t
         status = PROCEDURE_STATUS_ERROR;
     }
 
-    if (new_channel.is_inter_task)
+    if (new_channel.is_remote_client)
     {
         if (new_channel.tx_message_queue == nullptr)
         {
@@ -415,8 +415,8 @@ spi::procedure_status_t spi::send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx
         active_packet.chip_select.port = channel.chip_select.port;
         active_packet.chip_select.pin = channel.chip_select.pin;
         active_packet.channel_id = arg_channel_id;
-        memcpy(&active_packet.tx_bytes, &arg_tx_bytes, sizeof(active_packet.tx_bytes));
-        memcpy(&active_packet.bytes_per_transaction, &arg_bytes_per_tx, sizeof(active_packet.bytes_per_transaction));
+        memcpy(&active_packet.tx_bytes, &arg_tx_bytes, sizeof(arg_tx_bytes));
+        memcpy(&active_packet.bytes_per_transaction, &arg_bytes_per_tx, sizeof(arg_bytes_per_tx));
         active_packet.packet_id = ++next_available_packet_id;
 
         while (current_transaction < TX_SIZE_MAX)
@@ -482,7 +482,98 @@ spi::procedure_status_t spi::send_receive_byte(uint8_t &arg_tx_byte, uint8_t &ar
     return status;
 }
 
-spi::procedure_status_t spi::receive(uint8_t* arg_rx_bytes, int16_t arg_channel_id)
+int16_t spi::send_async(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
+{
+    channel_t channel;
+    get_channel_by_channel_id(channel, arg_channel_id);
+    if (channel.is_remote_client)
+    {
+        send_async_remote(arg_tx_bytes, arg_bytes_per_tx, arg_channel_id);
+    }
+    else
+    {
+        send_async_local(arg_tx_bytes, arg_bytes_per_tx, arg_channel_id);
+    }
+
+    return PROCEDURE_STATUS_OK;
+}
+
+spi::procedure_status_t spi::receive_async(uint8_t* arg_rx_bytes, int16_t arg_channel_id)
+{
+    channel_t channel;
+    get_channel_by_channel_id(channel, arg_channel_id);
+    if (channel.is_remote_client)
+    {
+        receive_async_remote(arg_rx_bytes, arg_channel_id);
+    }
+    else
+    {
+        receive_async_local(arg_rx_bytes, arg_channel_id);
+    }
+
+    return PROCEDURE_STATUS_OK;
+}
+
+spi::procedure_status_t spi::process_async(packet_t& arg_packet)
+{
+    process_async_transaction_requests();
+    process_async_send_buffer();
+    process_async_return_buffers(arg_packet);
+
+    return PROCEDURE_STATUS_OK;
+}
+
+int16_t spi::send_async_local(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
+{
+    if (channel_array[arg_channel_id] == 1U)
+    {
+        packet_t packet;
+        channel_t channel;
+
+        memset(&packet, '\0', sizeof(packet_t));
+        get_channel_by_channel_id(channel, arg_channel_id);
+
+        packet.packet_id = ++next_available_packet_id;
+        packet.channel_id = arg_channel_id;
+        memcpy(&packet.bytes_per_transaction, arg_bytes_per_tx, sizeof(packet.bytes_per_transaction));
+        memcpy(&packet.tx_bytes, arg_tx_bytes, sizeof(packet.tx_bytes));
+        packet.chip_select.port = channel.chip_select.port;
+        packet.chip_select.pin = channel.chip_select.pin;
+
+        send_buffer.push(packet);
+
+        return packet.packet_id;
+    }
+    return ID_INVALID;
+}
+
+int16_t spi::send_async_remote(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
+{
+    if (channel_array[arg_channel_id] == 1U)
+    {
+        channel_t channel;
+        get_channel_by_channel_id(channel, arg_channel_id);
+
+        if (channel.is_remote_client)
+        {
+            packet_t packet;
+
+            memset(&packet, '\0', sizeof(packet_t));
+            packet.packet_id = ++next_available_packet_id;
+            packet.channel_id = arg_channel_id;
+            memcpy(&packet.bytes_per_transaction, arg_bytes_per_tx, sizeof(packet.bytes_per_transaction));
+            memcpy(&packet.tx_bytes, arg_tx_bytes, sizeof(packet.tx_bytes));
+
+            if (rtosal::message_queue_send(channel.tx_message_queue, &packet, 0U) == rtosal::OS_OK)
+            {
+                return packet.packet_id;
+            }
+        }
+    }
+    return ID_INVALID;
+}
+
+spi::procedure_status_t spi::receive_async_local(uint8_t* arg_rx_bytes, int16_t arg_channel_id)
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
     packet_t packet;
@@ -540,28 +631,7 @@ spi::procedure_status_t spi::receive(uint8_t* arg_rx_bytes, int16_t arg_channel_
     return status;
 }
 
-int16_t spi::send_async(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
-{
-    if (channel_array[arg_channel_id] == 1U)
-    {
-        packet_t packet;
-        channel_t channel;
-        memset(&packet, '\0', sizeof(packet_t));
-        packet.packet_id = ++next_available_packet_id;
-        packet.channel_id = arg_channel_id;
-        memcpy(&packet.bytes_per_transaction, arg_bytes_per_tx, sizeof(packet.bytes_per_transaction));
-        memcpy(&packet.tx_bytes, arg_tx_bytes, sizeof(packet.tx_bytes));
-
-        get_channel_by_channel_id(channel, arg_channel_id);
-        if (rtosal::message_queue_send(channel.tx_message_queue, &packet, 0U) == rtosal::OS_OK)
-        {
-            return packet.packet_id;
-        }
-    }
-    return ID_INVALID;
-}
-
-spi::procedure_status_t spi::receive_async(uint8_t* arg_rx_bytes, int16_t arg_channel_id)
+spi::procedure_status_t spi::receive_async_remote(uint8_t* arg_rx_bytes, int16_t arg_channel_id)
 {
     procedure_status_t status = PROCEDURE_STATUS_TIMEOUT;
     if (channel_array[arg_channel_id] == 1U)
@@ -569,21 +639,23 @@ spi::procedure_status_t spi::receive_async(uint8_t* arg_rx_bytes, int16_t arg_ch
         channel_t channel;
 
         get_channel_by_channel_id(channel, arg_channel_id);
-
-        packet_t packet;
-
-        if (rtosal::message_queue_receive( channel.rx_message_queue, &packet, 0U) == rtosal::OS_OK)
+        if (channel.is_remote_client)
         {
-            memset(arg_rx_bytes, '\0', TX_SIZE_MAX);
-            memcpy(arg_rx_bytes, &packet.rx_bytes, TX_SIZE_MAX);
-            status = PROCEDURE_STATUS_OK;
+            packet_t packet;
+            memset(&packet, '\0', sizeof(packet_t));
+            if (rtosal::message_queue_receive( channel.rx_message_queue, &packet, 0U) == rtosal::OS_OK)
+            {
+                memset(arg_rx_bytes, '\0', TX_SIZE_MAX);
+                memcpy(arg_rx_bytes, &packet.rx_bytes, TX_SIZE_MAX);
+                status = PROCEDURE_STATUS_OK;
+            }
         }
     }
 
     return status;
 }
 
-spi::procedure_status_t spi::receive_inter_task_transaction_requests()
+spi::procedure_status_t spi::process_async_transaction_requests()
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
     channel_t channel;
@@ -594,7 +666,7 @@ spi::procedure_status_t spi::receive_inter_task_transaction_requests()
         if (channel_array[index] == 1U)
         {
             get_channel_by_channel_id(channel, index);
-            if (channel.is_inter_task)
+            if (channel.is_remote_client)
             {
                 if (rtosal::message_queue_receive(channel.tx_message_queue, &common_packet, 0U) == rtosal::OS_OK)
                 {
@@ -618,7 +690,7 @@ spi::procedure_status_t spi::receive_inter_task_transaction_requests()
     return status;
 }
 
-spi::procedure_status_t spi::process_send_buffer()
+spi::procedure_status_t spi::process_async_send_buffer()
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
 
@@ -695,7 +767,7 @@ spi::procedure_status_t spi::process_send_buffer()
     return status;
 }
 
-spi::procedure_status_t spi::process_return_buffers(spi::packet_t& arg_packet)
+spi::procedure_status_t spi::process_async_return_buffers(spi::packet_t& arg_packet)
 {
     procedure_status_t status = PROCEDURE_STATUS_ERROR;
     uint8_t buffer_accessed = 0U;
@@ -816,9 +888,9 @@ spi::procedure_status_t spi::process_return_buffers(spi::packet_t& arg_packet)
             {
                 get_channel_by_channel_id(channel, index);
 
-                if (channel.is_inter_task)
+                if (channel.is_remote_client)
                 {
-                    status = send_inter_task_transaction_result(channel.rx_message_queue, packet);
+                    status = send_remote_transaction_result(channel.rx_message_queue, packet);
                 }
                 else
                 {
@@ -1063,7 +1135,7 @@ spi::procedure_status_t spi::spi_transmit_receive_interrupt(uint8_t *arg_tx_data
     return PROCEDURE_STATUS_OK;
 }
 
-spi::procedure_status_t spi::send_inter_task_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet)
+spi::procedure_status_t spi::send_remote_transaction_result(rtosal::message_queue_handle_t arg_message_queue_id, packet_t& arg_packet)
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
 

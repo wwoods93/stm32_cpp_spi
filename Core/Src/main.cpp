@@ -100,10 +100,14 @@ int main()
 
     while (SYSTEM_RUN)
     {
+
+        hal::spi_2.send_async(tx_bytes, bytes_per_tx, 0U);
+        hal::spi_2.receive_async(rx_bytes, 0U);
+
 //        hal::spi_2.send_async(tx_bytes, bytes_per_tx, 0);
 //
 //        rx_bytes[0] = 1;
-//        hal::spi_2.receive_async(rx_bytes, 0);
+//        hal::spi_2.receive_async_remote(rx_bytes, 0);
 //        if (rx_bytes[0] == 0)
 //        {
 //            rx_bytes[0] = 5;
@@ -142,11 +146,11 @@ int main()
         }
 //        hal::spi_2.send(tx_bytes, bytes_per_tx, 0);
 //        hal::spi_2.send_receive_byte(tx_byte, rx_byte, 0U);
-        hal::spi_2.send_receive(tx_bytes, rx_bytes, bytes_per_tx, 0U);
+//        hal::spi_2.send_receive(tx_bytes, rx_bytes, bytes_per_tx, 0U);
 
-//        hal::spi_2.receive_inter_task_transaction_requests();
-//        hal::spi_2.process_send_buffer();
-//        hal::spi_2.process_return_buffers(packet);
+//        hal::spi_2.send_async(tx_bytes, bytes_per_tx, 0U);
+//        hal::spi_2.receive_async(rx_bytes, 0U);
+        hal::spi_2.process_async(packet);
     }
 }
 
