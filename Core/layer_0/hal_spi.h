@@ -46,12 +46,17 @@ class spi
         static constexpr int8_t     ISR_TX_16_BIT_2_LINE            = 2U;
         static constexpr int8_t     ISR_RX_16_BIT_2_LINE            = 3U;
 
+        static constexpr uint8_t    TRANSACTION_TYPE_NONE           = 0U;
+        static constexpr uint8_t    TRANSACTION_TYPE_SYNC           = 1U;
+        static constexpr uint8_t    TRANSACTION_TYPE_ASYNC          = 2U;
+
         static constexpr uint8_t    SEND_STATE_BEGIN                = 0U;
         static constexpr uint8_t    SEND_STATE_IN_PROGRESS          = 1U;
         static constexpr uint8_t    SEND_STATE_COMPLETE             = 2U;
 
         static constexpr uint32_t   FLAG_TIMEOUT                    = 50U;
         static constexpr uint32_t   TRANSACTION_TIMEOUT             = 100U;
+        static constexpr uint32_t   SEND_TIMEOUT                    = 1000U;
         static constexpr uint32_t   PROCESS_SEND_BUFFER_TIMEOUT     = 5000U;
         static constexpr uint16_t   FALLBACK_COUNTDOWN              = 1000U;
         static constexpr uint8_t    SPI_PROCEDURE_ERROR_NONE        = 0U;
@@ -208,7 +213,7 @@ class spi
 
         module_t*                   module;
         packet_t                    active_packet;
-        int16_t                     next_available_packet_id = 0U;
+        int16_t                     next_available_packet_id = ID_INVALID;
         uint32_t                    packets_requested_count = 0U;
         uint32_t                    packets_received_count = 0U;
         uint8_t                     process_send_buffer_state = SEND_STATE_BEGIN;
@@ -219,9 +224,11 @@ class spi
         int8_t                      rx_isr_id = ID_INVALID;
         uint8_t*                    rx_pointer;
         hal::timer_handle_t*        timeout_timer_handle;
+        uint32_t                    send_timeout_start;
         uint32_t                    process_send_buffer_timeout_start;
         int16_t                     next_available_channel_id = 0U;
         uint8_t                     channel_array[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+        uint8_t                     active_transaction_type = TRANSACTION_TYPE_NONE;
 
         std::queue<packet_t>        send_buffer;
         std::queue<packet_t>        pending_buffer;
@@ -265,10 +272,11 @@ class spi
 
         procedure_status_t initialize(module_t* arg_module, uint8_t arg_instance_t, TIM_HandleTypeDef* arg_timeout_timer_handle);
         procedure_status_t create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, uint8_t arg_is_inter_task, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue);
-        int16_t send(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        procedure_status_t send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        procedure_status_t send_receive_byte(uint8_t& arg_tx_byte, uint8_t& arg_rx_byte, int16_t arg_channel_id);
         procedure_status_t receive(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
-        int16_t send_inter_task(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
-        procedure_status_t receive_inter_task(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
+        int16_t send_async(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        procedure_status_t receive_async(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
         procedure_status_t receive_inter_task_transaction_requests();
         procedure_status_t process_send_buffer();
         procedure_status_t process_return_buffers(packet_t& arg_packet);

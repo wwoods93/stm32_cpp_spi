@@ -100,10 +100,10 @@ int main()
 
     while (SYSTEM_RUN)
     {
-//        hal::spi_2.send_inter_task(tx_bytes, bytes_per_tx, 0);
+//        hal::spi_2.send_async(tx_bytes, bytes_per_tx, 0);
 //
 //        rx_bytes[0] = 1;
-//        hal::spi_2.receive_inter_task(rx_bytes, 0);
+//        hal::spi_2.receive_async(rx_bytes, 0);
 //        if (rx_bytes[0] == 0)
 //        {
 //            rx_bytes[0] = 5;
@@ -122,7 +122,8 @@ int main()
     uint8_t tx_bytes[8] = { 0x01, 0x03, 0x05, 0x06, 0x08, 0x0A, 0x0B, 0x0F};
     uint8_t rx_bytes[8] = { 1, 0, 1, 0, 1, 0, 1, 0 };
     uint8_t bytes_per_tx[8] = { 8, 0, 0, 0, 0, 0, 0, 0 };
-
+    uint8_t tx_byte = 0x1AU;
+    uint8_t rx_byte = 0x00U;
     int16_t channel_0_id = 0U;
     static uint32_t spi_task_count = 0U;
     spi::packet_t packet;
@@ -139,12 +140,13 @@ int main()
             HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
             spi_task_count = get_timer_count(get_timer_2_handle());
         }
-        hal::spi_2.send(tx_bytes, bytes_per_tx, 0);
-        hal::spi_2.receive(rx_bytes, 0);
+//        hal::spi_2.send(tx_bytes, bytes_per_tx, 0);
+//        hal::spi_2.send_receive_byte(tx_byte, rx_byte, 0U);
+        hal::spi_2.send_receive(tx_bytes, rx_bytes, bytes_per_tx, 0U);
 
-        hal::spi_2.receive_inter_task_transaction_requests();
-        hal::spi_2.process_send_buffer();
-        hal::spi_2.process_return_buffers(packet);
+//        hal::spi_2.receive_inter_task_transaction_requests();
+//        hal::spi_2.process_send_buffer();
+//        hal::spi_2.process_return_buffers(packet);
     }
 }
 
