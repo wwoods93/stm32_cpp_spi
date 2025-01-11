@@ -587,7 +587,6 @@ spi::procedure_status_t spi::process_send_buffer()
 
         if (process_send_buffer_state == SEND_STATE_IN_PROGRESS)
         {
-//            process_send_buffer_timeout_start = get_timer_count(timeout_timer_handle);
             while (current_transaction < TX_SIZE_MAX)
             {
                 transaction_byte_count = active_packet.bytes_per_transaction[current_transaction];

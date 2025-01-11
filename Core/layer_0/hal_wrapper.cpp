@@ -37,7 +37,6 @@
 namespace hal
 {
 
-
     status_t timer_register_callback(timer_handle_t* arg_timer_handle, timer_callback_id_t arg_callback_id_t, timer_callback_t arg_callback)
     {
         return (status_t) HAL_TIM_RegisterCallback((TIM_HandleTypeDef*)arg_timer_handle, (HAL_TIM_CallbackIDTypeDef)arg_callback_id_t, (pTIM_CallbackTypeDef) arg_callback);
@@ -47,8 +46,6 @@ namespace hal
     {
         return (status_t) HAL_TIM_Base_Start((TIM_HandleTypeDef*) arg_timer_handle);
     }
-
-
 
     void gpio_write_pin(gpio_t* arg_port_name, uint16_t arg_gpio_pin, uint8_t arg_pin_state)
     {
@@ -79,7 +76,6 @@ namespace hal
     {
         RTC_DateTypeDef current_date;
         RTC_TimeTypeDef current_time;
-
 
         uint8_t leading_zero = 0;
         char hours_str[3];
@@ -142,7 +138,6 @@ namespace hal
         HAL_NVIC_EnableIRQ(SPI1_IRQn);
 }
 
-
     void spi_2_msp_initialize()
     {
         GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -174,7 +169,5 @@ namespace hal
 
         HAL_NVIC_SetPriority(SPI2_IRQn, 5, 0);
         HAL_NVIC_EnableIRQ(SPI2_IRQn);
-
     }
-
 }
