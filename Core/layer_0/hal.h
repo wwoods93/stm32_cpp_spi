@@ -79,6 +79,7 @@ RTC_HandleTypeDef* get_rtc_handle();
 TIM_HandleTypeDef* get_timer_2_handle();
 uint32_t get_timer_2_count();
 uint32_t get_timer_count(hal::timer_handle_t* arg_timer_handle);
+HAL_StatusTypeDef hal_rcc_oscillator_config(RCC_OscInitTypeDef  *RCC_OscInitStruct);
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
