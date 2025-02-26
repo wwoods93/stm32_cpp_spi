@@ -10,31 +10,14 @@
  *
  **********************************************************************************************************************/
 
-/* c/c++ includes */
-
 /* stm32 includes */
 #include "stm32f4xx.h"
-/* third-party includes */
 
 /* layer_0 includes */
 #include "hal.h"
 #include "hal_spi.h"
-/* layer_1_rtosal includes */
 
-/* layer_1 includes */
-
-/* layer_3_control includes */
-
-/* layer_4_sys_op includes */
-
-/* layer_n_meta_structure includes */
-
-//#include "system_clock.h"
-//#include "gpio.h"
-//#include "pwm.h"
-
-
-UART_HandleTypeDef huart2;
+//UART_HandleTypeDef huart2;
 SPI_HandleTypeDef hspi1;
 
 SPI_HandleTypeDef hspi3;
@@ -105,10 +88,10 @@ TIM_HandleTypeDef* get_timer_2_handle()
     return &htim2;
 }
 
-UART_HandleTypeDef* get_usart_2_handle()
-{
-    return &huart2;
-}
+//UART_HandleTypeDef* get_usart_2_handle()
+//{
+//    return &huart2;
+//}
 
 uint32_t get_timer_2_count()
 {
@@ -120,59 +103,24 @@ uint32_t get_timer_count(hal::timer_handle_t* arg_timer_handle)
     return arg_timer_handle->Instance->CNT;
 }
 
-//void error_handler()
-//{
-//    __disable_irq();
-//    while (1)
-//    {
-//    }
-//}
-//
-//void error_handler()
-//{
-//    __disable_irq();
-//    while (1)
-//    {
-//    }
-//}
-//
-//
-//void initialize_peripherals()
-//{
-//    HAL_Init();
-//    SystemClock_Config();
-//
-//    MX_GPIO_Init();
-//    MX_RTC_Init();
-//    MX_TIM1_Init();
-//    timer_6_initialize();
-//    MX_TIM7_Init();
-//    MX_TIM10_Init();
-//    MX_TIM11_Init();
-//    MX_TIM13_Init();
-//    MX_TIM14_Init();
-//    can_1_initialize();
-//    MX_USART2_UART_Init();
-//    i2c_2_initialize();
-//}
 
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-void SystemClock_Config(void)
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM3)
+    {
+        HAL_IncTick();
+    }
+}
+
+
+void SystemClock_Config()
 {
     RCC_OscInitTypeDef RCC_OscInitStruct = {0};
     RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-    /** Configure the main internal regulator output voltage
-    */
     __HAL_RCC_PWR_CLK_ENABLE();
     __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
-    /** Initializes the RCC Oscillators according to the specified parameters
-    * in the RCC_OscInitTypeDef structure.
-    */
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
     RCC_OscInitStruct.LSEState = RCC_LSE_ON;
     RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -190,8 +138,6 @@ void SystemClock_Config(void)
         error_handler();
     }
 
-    /** Initializes the CPU, AHB and APB buses clocks
-    */
     RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                                   |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
@@ -206,27 +152,10 @@ void SystemClock_Config(void)
     HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1);
 }
 
-/**
-  * @brief RTC Initialization Function
-  * @param None
-  * @retval None
-  */
 void MX_RTC_Init()
 {
-
-    /* USER CODE BEGIN RTC_Init 0 */
-
-    /* USER CODE END RTC_Init 0 */
-
     RTC_TimeTypeDef sTime = {0};
     RTC_DateTypeDef sDate = {0};
-
-    /* USER CODE BEGIN RTC_Init 1 */
-
-    /* USER CODE END RTC_Init 1 */
-
-    /** Initialize RTC Only
-    */
 
     hrtc.Instance = RTC;
     hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
@@ -240,12 +169,6 @@ void MX_RTC_Init()
         error_handler();
     }
 
-    /* USER CODE BEGIN Check_RTC_BKUP */
-
-    /* USER CODE END Check_RTC_BKUP */
-
-    /** Initialize RTC and set the Time and Date
-    */
     sTime.Hours = 0x0;
     sTime.Minutes = 0x0;
     sTime.Seconds = 0x0;
@@ -264,28 +187,11 @@ void MX_RTC_Init()
     {
         error_handler();
     }
-    /* USER CODE BEGIN RTC_Init 2 */
-
-    /* USER CODE END RTC_Init 2 */
-
 }
 
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
+
 void MX_SPI1_Init()
 {
-
-    /* USER CODE BEGIN SPI1_Init 0 */
-
-    /* USER CODE END SPI1_Init 0 */
-
-    /* USER CODE BEGIN SPI1_Init 1 */
-
-    /* USER CODE END SPI1_Init 1 */
-    /* SPI1 parameter configuration*/
     hspi1.Instance = SPI1;
     hspi1.Init.Mode = SPI_MODE_MASTER;
     hspi1.Init.Direction = SPI_DIRECTION_2LINES;
@@ -302,62 +208,10 @@ void MX_SPI1_Init()
     {
         error_handler();
     }
-    /* USER CODE BEGIN SPI1_Init 2 */
-
-    /* USER CODE END SPI1_Init 2 */
-
 }
-
-/**
-  * @brief SPI2 Initialization Function
-  * @param None
-  * @retval None
-  */
-//void MX_SPI2_Init()
-//{
-//
-//    /* USER CODE BEGIN SPI2_Init 0 */
-//
-//    /* USER CODE END SPI2_Init 0 */
-//
-//    /* USER CODE BEGIN SPI2_Init 1 */
-//
-//    /* USER CODE END SPI2_Init 1 */
-//    /* SPI2 parameter configuration*/
-//    hspi2.Instance = SPI2;
-//    hspi2.Init.Mode = SPI_MODE_MASTER;
-//    hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-//    hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-//    hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
-//    hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
-//    hspi2.Init.NSS = SPI_NSS_SOFT;
-//    hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-//    hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
-//    hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
-//    hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-//    hspi2.Init.CRCPolynomial = 10;
-//    if (HAL_SPI_Init(&hspi2) != HAL_OK)
-//    {
-//        error_handler();
-//    }
-//    /* USER CODE BEGIN SPI2_Init 2 */
-//
-//    /* USER CODE END SPI2_Init 2 */
-//
-//}
-
 
 void MX_SPI3_Init()
 {
-
-    /* USER CODE BEGIN SPI3_Init 0 */
-
-    /* USER CODE END SPI3_Init 0 */
-
-    /* USER CODE BEGIN SPI3_Init 1 */
-
-    /* USER CODE END SPI3_Init 1 */
-    /* SPI3 parameter configuration*/
     hspi3.Instance = SPI3;
     hspi3.Init.Mode = SPI_MODE_MASTER;
     hspi3.Init.Direction = SPI_DIRECTION_2LINES;
@@ -374,10 +228,6 @@ void MX_SPI3_Init()
     {
         error_handler();
     }
-    /* USER CODE BEGIN SPI3_Init 2 */
-
-    /* USER CODE END SPI3_Init 2 */
-
 }
 
 void MX_TIM2_Init()
@@ -408,101 +258,65 @@ void MX_TIM2_Init()
     }
 }
 
-/**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-void MX_USART2_UART_Init(void)
-{
+//void MX_USART2_UART_Init()
+//{
+//    huart2.Instance = USART2;
+//    huart2.Init.BaudRate = 57600;
+//    huart2.Init.WordLength = UART_WORDLENGTH_8B;
+//    huart2.Init.StopBits = UART_STOPBITS_1;
+//    huart2.Init.Parity = UART_PARITY_NONE;
+//    huart2.Init.Mode = UART_MODE_TX_RX;
+//    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+//    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+//    if (HAL_UART_Init(&huart2) != HAL_OK)
+//    {
+//        error_handler();
+//    }
+//}
 
-    /* USER CODE BEGIN USART2_Init 0 */
-
-    /* USER CODE END USART2_Init 0 */
-
-    /* USER CODE BEGIN USART2_Init 1 */
-
-    /* USER CODE END USART2_Init 1 */
-    huart2.Instance = USART2;
-    huart2.Init.BaudRate = 115200;
-    huart2.Init.WordLength = UART_WORDLENGTH_8B;
-    huart2.Init.StopBits = UART_STOPBITS_1;
-    huart2.Init.Parity = UART_PARITY_NONE;
-    huart2.Init.Mode = UART_MODE_TX_RX;
-    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart2) != HAL_OK)
-    {
-        error_handler();
-    }
-    /* USER CODE BEGIN USART2_Init 2 */
-
-    /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
 void MX_GPIO_Init()
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    /* GPIO Ports Clock Enable */
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOH_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
-    /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-
-    /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOC, SPI1_CS2_Pin|SPI3_CS1_Pin, GPIO_PIN_SET);
-
-    /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOB, SPI2_CS1_Pin|SPI2_CS2_Pin, GPIO_PIN_SET);
-
-    /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(SPI1_CS1_GPIO_Port, SPI1_CS1_Pin, GPIO_PIN_SET);
 
-    /*Configure GPIO pin : B1_Pin */
     GPIO_InitStruct.Pin = B1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : LD2_Pin */
     GPIO_InitStruct.Pin = LD2_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : SPI1_CS2_Pin */
     GPIO_InitStruct.Pin = SPI1_CS2_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     HAL_GPIO_Init(SPI1_CS2_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : SPI2_CS1_Pin SPI2_CS2_Pin */
     GPIO_InitStruct.Pin = SPI2_CS1_Pin|SPI2_CS2_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : SPI3_CS1_Pin */
     GPIO_InitStruct.Pin = SPI3_CS1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(SPI3_CS1_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : PA8 */
     GPIO_InitStruct.Pin = GPIO_PIN_8;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -510,7 +324,6 @@ void MX_GPIO_Init()
     GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : SPI1_CS1_Pin */
     GPIO_InitStruct.Pin = SPI1_CS1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -519,13 +332,11 @@ void MX_GPIO_Init()
 
 }
 
-void error_handler(void)
+void error_handler()
 {
-    /* USER CODE BEGIN error_handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1)
     {
+
     }
-    /* USER CODE END error_handler_Debug */
 }

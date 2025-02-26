@@ -80,8 +80,9 @@ TIM_HandleTypeDef* get_timer_2_handle();
 uint32_t get_timer_2_count();
 uint32_t get_timer_count(hal::timer_handle_t* arg_timer_handle);
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
-UART_HandleTypeDef* get_usart_2_handle();
+//UART_HandleTypeDef* get_usart_2_handle();
 //void initialize_peripherals();
 
 //void MX_USART2_UART_Init();

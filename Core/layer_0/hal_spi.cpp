@@ -257,6 +257,7 @@ spi::procedure_status_t spi::initialize(module_t* arg_module, uint8_t arg_instan
 
     std::shared_ptr<uint8_t[]> rx_pointer_tmp(new uint8_t[TX_SIZE_MAX]);
     rx_pointer = rx_pointer_tmp.get();
+    send_receive_rx_bytes = new uint8_t[TX_SIZE_MAX];
 
     if (rx_pointer == nullptr)
     {
@@ -400,7 +401,7 @@ spi::procedure_status_t spi::create_channel(int16_t& arg_channel_id, hal::gpio_t
     return PROCEDURE_STATUS_OK;
 }
 
-spi::procedure_status_t spi::send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
+spi::procedure_status_t spi::send_receive(uint8_t* arg_tx_bytes, uint8_t (&arg_rx_bytes)[TX_SIZE_MAX], uint8_t* arg_bytes_per_tx, int16_t arg_channel_id)
 {
     procedure_status_t status = PROCEDURE_STATUS_OK;
     uint8_t current_transaction = 0;
@@ -411,6 +412,8 @@ spi::procedure_status_t spi::send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx
     {
         channel_t channel;
         memset(&active_packet, '\0', sizeof(packet_t));
+
+
         get_channel_by_channel_id(channel, arg_channel_id);
         active_packet.chip_select.port = channel.chip_select.port;
         active_packet.chip_select.pin = channel.chip_select.pin;
@@ -418,6 +421,11 @@ spi::procedure_status_t spi::send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx
         memcpy(&active_packet.tx_bytes, &arg_tx_bytes, sizeof(arg_tx_bytes));
         memcpy(&active_packet.bytes_per_transaction, &arg_bytes_per_tx, sizeof(arg_bytes_per_tx));
         active_packet.packet_id = ++next_available_packet_id;
+        total_byte_count = 0U;
+        for (uint8_t index = 0U; index < TX_SIZE_MAX; ++index)
+        {
+            total_byte_count += active_packet.bytes_per_transaction[index];
+        }
 
         while (current_transaction < TX_SIZE_MAX)
         {
@@ -425,6 +433,7 @@ spi::procedure_status_t spi::send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx
             if (transaction_byte_count != 0)
             {
                 send_timeout_start = get_timer_count(timeout_timer_handle);
+                module->rx_data_ready_flag = 0U;
                 spi_transmit_receive_interrupt(arg_tx_bytes, rx_pointer, transaction_byte_count);
                 while (!module->rx_data_ready_flag)
                 {
@@ -436,13 +445,14 @@ spi::procedure_status_t spi::send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx
                     }
                 }
             }
-            else
-            {
-                break;
-            }
+            ++current_transaction;
         }
-        memcpy(&arg_rx_bytes, &active_packet.rx_bytes, sizeof(arg_rx_bytes));
-        memset(&active_packet, '\0', sizeof(packet_t));
+
+        for (uint8_t index = 0U; index < TX_SIZE_MAX; ++index)
+        {
+            arg_rx_bytes[index] = send_receive_rx_bytes[index];
+        }
+
     }
 
     active_transaction_type = TRANSACTION_TYPE_NONE;

@@ -16,6 +16,7 @@
 #include <vector>
 #include <queue>
 #include <memory>
+#include <cstring>
 /* stm32 includes */
 
 /* third-party includes */
@@ -217,6 +218,7 @@ class spi
         uint32_t                    packets_received_count = 0U;
         uint8_t                     process_send_buffer_state = SEND_STATE_BEGIN;
         uint8_t                     packet_index = 0U;
+        uint8_t                     total_byte_count = 0U;
         uint8_t                     transaction_byte_count = 0U;
         uint8_t                     transaction_index = 0U;
         int8_t                      tx_isr_id = ID_INVALID;
@@ -228,6 +230,8 @@ class spi
         int16_t                     next_available_channel_id = 0U;
         uint8_t                     channel_array[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
         uint8_t                     active_transaction_type = TRANSACTION_TYPE_NONE;
+
+        volatile uint8_t*           send_receive_rx_bytes;
 
         std::queue<packet_t>        send_buffer;
         std::queue<packet_t>        pending_buffer;
@@ -263,7 +267,7 @@ class spi
 
         procedure_status_t initialize(module_t* arg_module, uint8_t arg_instance_t, TIM_HandleTypeDef* arg_timeout_timer_handle);
         procedure_status_t create_channel(int16_t& arg_channel_id, hal::gpio_t* arg_chip_select_port, uint16_t arg_chip_select_pin, uint8_t arg_is_inter_task, rtosal::message_queue_handle_t arg_tx_message_queue, rtosal::message_queue_handle_t arg_rx_message_queue);
-        procedure_status_t send_receive(uint8_t* arg_tx_bytes, uint8_t* arg_rx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
+        procedure_status_t send_receive(uint8_t* arg_tx_bytes, uint8_t (&arg_rx_bytes)[TX_SIZE_MAX], uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
         procedure_status_t send_receive_byte(uint8_t& arg_tx_byte, uint8_t& arg_rx_byte, int16_t arg_channel_id);
         int16_t send_async(uint8_t* arg_tx_bytes, uint8_t* arg_bytes_per_tx, int16_t arg_channel_id);
         procedure_status_t receive_async(uint8_t* arg_rx_bytes, int16_t arg_channel_id);
@@ -382,8 +386,19 @@ inline void spi::handle_tx_success()
 
 inline void spi::handle_rx_success()
 {
+    for (transaction_index = 0U; transaction_index <  transaction_byte_count; ++transaction_index)
+    {
+        active_packet.rx_bytes[packet_index++] = rx_pointer[transaction_index];
+    }
+
     hal::gpio_write_pin(module->chip_select_port, module->chip_select_pin, GPIO_PIN_SET);
-    module->rx_data_ready_flag = 1U;
+
+    if (packet_index >= total_byte_count)
+    {
+        memset(&send_receive_rx_bytes, '\0', TX_SIZE_MAX);
+        memcpy(&send_receive_rx_bytes, &active_packet.rx_bytes, TX_SIZE_MAX);
+        module->rx_data_ready_flag = 1U;
+    }
 }
 
 inline void spi::handle_transaction_error() const

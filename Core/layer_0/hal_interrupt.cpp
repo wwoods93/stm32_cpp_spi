@@ -63,10 +63,10 @@ void SPI1_IRQHandler()
 //    spi_irq_handler(hal::get_spi_2_object());
 //}
 
-void USART2_IRQHandler()
-{
-    HAL_UART_IRQHandler(get_usart_2_handle());
-}
+//void USART2_IRQHandler()
+//{
+//    HAL_UART_IRQHandler(get_usart_2_handle());
+//}
 
 //void CAN1_TX_IRQHandler()
 //{

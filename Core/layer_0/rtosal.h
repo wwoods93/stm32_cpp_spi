@@ -25,7 +25,12 @@
 #define TRANSACTION_BYTE_COUNT_MAX          8U
 #define COMMON_PACKET_ARRAY_LENGTH_MAX      32U
 
-//static constexpr uint32_t READY_FOR_USER_INIT_FLAG      = 0x01000000;
+#define QUEUE_LENGTH_MAX    16
+
+static constexpr uint32_t READY_FOR_RESOURCE_INIT_FLAG  = 0x10000000;
+//static constexpr uint32_t READY_FOR_DEVICE_INIT_FLAG    = 0x001000000;
+static constexpr uint32_t READY_FOR_USER_INIT_FLAG      = 0x01000000;
+static constexpr uint32_t READY_FOR_COMMS_RUN           = 0X00100000;
 
 osMessageQueueId_t get_extrusion_task_to_comms_handler_queue_1_handle();
 osMessageQueueId_t get_extrusion_task_to_comms_handler_queue_2_handle();

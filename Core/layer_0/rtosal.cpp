@@ -23,7 +23,6 @@
 
 /* rtos abstraction includes */
 #include "hal_spi.h"
-#include "rtosal_globals.h"
 /* sys op includes */
 
 /* meta structure includes */
